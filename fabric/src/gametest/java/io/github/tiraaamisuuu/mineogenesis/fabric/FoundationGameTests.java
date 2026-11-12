@@ -153,10 +153,10 @@ public final class FoundationGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 40)
     public void strafeCollisionAndBlockObservation(TestContext ctx) {
         floor(ctx);
-        // At yaw zero positive strafe moves toward decreasing X. No navigation is provided.
+        // At yaw zero the body faces south; left strafe is east (increasing X).
         for (int z = 1; z < 7; z++) {
-            ctx.setBlockState(new BlockPos(1, 2, z), Blocks.STONE);
-            ctx.setBlockState(new BlockPos(1, 3, z), Blocks.STONE);
+            ctx.setBlockState(new BlockPos(5, 2, z), Blocks.STONE);
+            ctx.setBlockState(new BlockPos(5, 3, z), Blocks.STONE);
         }
         Vec3d origin = Vec3d.ofBottomCenter(ctx.getAbsolutePos(new BlockPos(3, 2, 3)));
         var environment = new MinecraftAgentEnvironment();
@@ -167,9 +167,9 @@ public final class FoundationGameTests implements FabricGameTest {
         manager.setInput(new AgentInput(0, 1, 0, false));
         manager.tick();
         ctx.runAtTick(25, () -> {
-            ctx.assertTrue(agent.getX() < origin.x - 0.1, "Strafe must move left relative to yaw");
+            ctx.assertTrue(agent.getX() > origin.x + 0.1, "Strafe must move left relative to yaw");
             ctx.assertTrue(agent.horizontalCollision, "Solid wall must block the body");
-            agent.setYaw(90);
+            agent.setYaw(-90);
             manager.pause();
             ctx.assertTrue(manager.observation().orElseThrow().blockAhead().equals("minecraft:stone"),
                     "Raycast must report the wall ahead");
