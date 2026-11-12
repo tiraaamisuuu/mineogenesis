@@ -9,10 +9,11 @@ public final class EvolutionRun {
 
     private final EvolutionEnvironment environment;
     private final EvolutionConfig config;
+    private final EvolutionObjective objective;
     private EvolutionPopulation population;
     private final double[] scores;
     private NeuralController controller;
-    private GroundExplorationFitness fitness;
+    private EpisodeFitness fitness;
     private State state = State.READY;
     private int generation = 1, index, episodeTicks;
     private long totalTicks;
@@ -20,10 +21,17 @@ public final class EvolutionRun {
     private NetworkGenome champion;
     private double bestFitness;
     private String failureReason = "";
+    private int generationSuccesses;
+    private long totalSuccesses;
 
     public EvolutionRun(EvolutionEnvironment environment, EvolutionConfig config) {
+        this(environment, config, EvolutionObjective.EXPLORATION);
+    }
+
+    public EvolutionRun(EvolutionEnvironment environment, EvolutionConfig config, EvolutionObjective objective) {
         this.environment = Objects.requireNonNull(environment);
         this.config = Objects.requireNonNull(config);
+        this.objective = Objects.requireNonNull(objective);
         population = new EvolutionPopulation(config);
         scores = new double[config.populationSize()];
     }
@@ -43,7 +51,7 @@ public final class EvolutionRun {
             if (state == State.PAUSED) return;
             // This frame is the outcome of the LAST submitted action, including the final one.
             if (episodeTicks > 0) fitness.record(frame);
-            if (episodeTicks == config.episodeTicks()) {
+            if (episodeTicks == config.episodeTicks() || (episodeTicks > 0 && fitness.successful())) {
                 finishEpisode();
                 if (state != State.RUNNING) return;
                 frame = requireFrame();
@@ -89,6 +97,8 @@ public final class EvolutionRun {
         generation = 1;
         index = episodeTicks = 0;
         totalTicks = 0;
+        generationSuccesses = 0;
+        totalSuccesses = 0;
         failureReason = "";
         state = State.READY;
     }
@@ -98,13 +108,14 @@ public final class EvolutionRun {
         environment.label("Gen " + generation + " | Agent " + (index + 1) + "/" + config.populationSize());
         // Commands may arrive between world ticks. No idle physics before the first action.
         environment.setRunning(false);
-        fitness = new GroundExplorationFitness(requireFrame());
+        fitness = new EpisodeFitness(requireFrame(), objective);
         controller = new NeuralController(population.genome(index));
         episodeTicks = 0;
     }
 
     private void finishEpisode() {
         double score = fitness.score();
+        if (fitness.successful()) { generationSuccesses++; totalSuccesses++; }
         scores[index] = score;
         if (champion == null || score > bestFitness) {
             champion = population.genome(index);
@@ -115,13 +126,14 @@ public final class EvolutionRun {
         if (index == population.size()) {
             double sum = 0, min = Double.POSITIVE_INFINITY, max = Double.NEGATIVE_INFINITY;
             for (double value : scores) { sum += value; min = Math.min(min, value); max = Math.max(max, value); }
-            lastStats = new GenerationStats(generation, max, sum / scores.length, min);
+            lastStats = new GenerationStats(generation, max, sum / scores.length, min, generationSuccesses);
             if (generation == config.generations()) {
                 state = State.COMPLETED;
                 return;
             }
             population.breed(scores);
             generation++;
+            generationSuccesses = 0;
             index = 0;
         }
         startEpisode();
@@ -145,7 +157,9 @@ public final class EvolutionRun {
     public int individual() { return Math.min(index + 1, config.populationSize()); }
     public int episodeTicks() { return episodeTicks; }
     public long totalTicks() { return totalTicks; }
-    public int currentFitness() { return fitness == null ? 0 : fitness.score(); }
+    public double currentFitness() { return fitness == null ? 0 : fitness.score(); }
+    public EvolutionObjective objective() { return objective; }
+    public long totalSuccesses() { return totalSuccesses; }
     public double bestFitness() { return bestFitness; }
     public Optional<GenerationStats> lastStats() { return Optional.ofNullable(lastStats); }
     public Optional<NetworkGenome> champion() { return Optional.ofNullable(champion); }

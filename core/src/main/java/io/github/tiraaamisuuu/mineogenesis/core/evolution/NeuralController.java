@@ -4,7 +4,7 @@ import io.github.tiraaamisuuu.mineogenesis.core.AgentInput;
 import io.github.tiraaamisuuu.mineogenesis.core.AgentObservation;
 import java.util.Objects;
 
-/** Converts local observations to actuators; never sees position, fitness or a target. */
+/** Converts local sensory state to actuators; never receives world/target coordinates or fitness. */
 public final class NeuralController {
     private final NetworkGenome genome;
     private final double[] inputs = new double[NetworkGenome.INPUTS];
@@ -25,9 +25,13 @@ public final class NeuralController {
         inputs[5] = observation.blockAhead().equals("minecraft:air") ? 0 : 1;
         inputs[6] = previous.forward();
         inputs[7] = previous.strafe();
+        inputs[8] = observation.targetAhead() ? 1 : 0;
+        inputs[9] = observation.miningProgress();
+        inputs[10] = Math.min(1, observation.collectedTarget());
+        inputs[11] = unit(observation.pitch() / 90.0);
         genome.evaluate(inputs, hidden, outputs);
         previous = new AgentInput((float) outputs[0], (float) outputs[1],
-                (float) (outputs[2] * 10), outputs[3] > 0.5);
+                (float) (outputs[2] * 10), (float) (outputs[3] * 10), outputs[4] > 0.5, outputs[5] > 0.5);
         return previous;
     }
 

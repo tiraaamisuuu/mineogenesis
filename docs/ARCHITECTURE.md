@@ -5,7 +5,9 @@
 The canonical vision is [PROJECT_BRIEF.md](../PROJECT_BRIEF.md), currently at the
 repository root. A1 establishes experiment lifecycle and one manually controlled
 body. The first evolution extension is documented separately in
-[A2_EVOLUTION.md](A2_EVOLUTION.md). Mining and survival remain later phases.
+[A2_EVOLUTION.md](A2_EVOLUTION.md). The scoped mining/collection extension is
+documented in [A3_BLOCK_ACQUISITION.md](A3_BLOCK_ACQUISITION.md); generalised
+acquisition and survival remain later phases.
 
 ## Toolchain
 
@@ -57,8 +59,10 @@ choose targets, steer around obstacles or search for blocks.
   transient and must not reappear after loading a save.
 * Minecraft ticking, collision and tracking remain costs per entity. A1 makes no
   population-size or throughput claim. Population benchmarks precede expansion.
-* Pausing the experiment does not pause the world or other entities. Resetting
-  this lifecycle does not restore terrain, time, weather or a random seed.
+* Pausing the body does not pause the world or other entities. Exploration reset
+  does not restore terrain, time or weather. Acquisition restores only its own
+  selected-log fixture; it is not a general world rollback. Evolution reset
+  reseeds genetic operations, not the Minecraft world.
 * Floating-point physics and uncontrolled world events are not a reproducible
   benchmark. Controlled arenas and world restoration are later work.
 

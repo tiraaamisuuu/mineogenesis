@@ -70,6 +70,15 @@ public final class ExperimentCommands {
                             session.evolution(); session.reset(); return "Evolution reset; population reseeded";
                         }))))
                 .then(literal("agent")
+                        .then(literal("mine").then(argument("held", BoolArgumentType.bool()).executes(ctx -> execute(ctx, sessions, session -> {
+                            session.setManualMine(BoolArgumentType.getBool(ctx, "held"));
+                            return "Manual mine input updated";
+                        }))))
+                        .then(literal("view").then(argument("yaw", FloatArgumentType.floatArg(-180, 180))
+                                .then(argument("pitch", FloatArgumentType.floatArg(-90, 90)).executes(ctx -> execute(ctx, sessions, session -> {
+                                    session.setManualView(FloatArgumentType.getFloat(ctx, "yaw"), FloatArgumentType.getFloat(ctx, "pitch"));
+                                    return "Manual view set";
+                                })))))
                         .then(literal("idle").executes(ctx -> execute(ctx, sessions, session -> {
                             session.setManualInput(AgentInput.IDLE);
                             return "Agent input cleared (normal momentum and gravity still apply)";
@@ -89,6 +98,7 @@ public final class ExperimentCommands {
                                                                             BoolArgumentType.getBool(ctx, "jump")));
                                                                     return "Agent input set; use agent idle to clear it";
                                                                 })))))))));
+        AcquisitionCommands.register(dispatcher, sessions);
     }
 
     private static int startEvolution(CommandContext<ServerCommandSource> ctx,
@@ -101,7 +111,7 @@ public final class ExperimentCommands {
         });
     }
 
-    private static int execute(CommandContext<ServerCommandSource> ctx,
+    static int execute(CommandContext<ServerCommandSource> ctx,
                                Function<MinecraftServer, ExperimentSession> sessions,
                                Function<ExperimentSession, String> action) {
         ExperimentSession session = sessions.apply(ctx.getSource().getServer());

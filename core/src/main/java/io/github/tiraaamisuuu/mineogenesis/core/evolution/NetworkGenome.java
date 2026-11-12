@@ -3,11 +3,11 @@ package io.github.tiraaamisuuu.mineogenesis.core.evolution;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
-/** Immutable weights for an 8-8-4 fully connected tanh network. */
+/** Immutable weights for a 12-8-6 fully connected tanh network. */
 public final class NetworkGenome {
-    public static final int INPUTS = 8;
+    public static final int INPUTS = 12;
     public static final int HIDDEN = 8;
-    public static final int OUTPUTS = 4;
+    public static final int OUTPUTS = 6;
     public static final int GENE_COUNT = (INPUTS + 1) * HIDDEN + (HIDDEN + 1) * OUTPUTS;
     private final double[] genes;
 
@@ -48,7 +48,7 @@ public final class NetworkGenome {
     public void evaluate(double[] input, double[] hidden, double[] output) {
         if (input.length != INPUTS || hidden.length != HIDDEN || output.length != OUTPUTS
                 || input == hidden || input == output || hidden == output) {
-            throw new IllegalArgumentException("Distinct inference buffers must have lengths 8, 8, 4");
+            throw new IllegalArgumentException("Distinct inference buffers must have lengths " + INPUTS + ", " + HIDDEN + ", " + OUTPUTS);
         }
         for (double value : input) {
             if (!Double.isFinite(value)) throw new IllegalArgumentException("Network inputs must be finite");
