@@ -60,8 +60,12 @@ mutation probability 0.10, Gaussian sigma 0.20, tournament size 3, one elite.
   This discourages counting inactivity and falling as exploration.
 * Keep per-tick inference buffers reusable. Population/genome allocations occur
   between episodes/generations. Fitness memory is bounded by the episode budget.
+* A champion replay uses the best evaluated immutable genome, the captured
+  training spawn and the same tick budget. Replay has its own fresh controller
+  memory and does not change training statistics. It is a visual inspection,
+  not a deterministic benchmark or another fitness evaluation.
 * No network persistence or checkpoint files yet. Stop retains summary statistics
-  for inspection; reset/new run/server shutdown discard the previous population.
+  and the champion for inspection; reset/new run/server shutdown discard them.
 
 ## Validation plan
 
@@ -71,7 +75,9 @@ exact episode budgets including the final outcome, grounded novelty scoring,
 pause/resume, reset replay and cleanup after failures. Minecraft GameTests must
 cover the new commands, exclusive manual/evolution ownership, body replacement,
 generation completion, pause/reset and missing-body cleanup. Existing A1 tests
-must continue to pass. A graphical user run checks the visible sequence of
+must continue to pass. Replay must retain training statistics and use a bounded
+episode, and a real registered server-session test must advance without a test
+driver calling its ticks. A graphical user run checks the visible sequence of
 candidates and generation/status reporting.
 
 ## Background

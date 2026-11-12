@@ -1,9 +1,9 @@
-# A1 verification
+# Foundation and evolution verification
 
 ## Automated core checks
 
 `./gradlew :core:test` or the dependency-free `./scripts/test-core.sh` runs ten
-contract tests covering initial state, idempotent start, input forwarding,
+foundation contract tests covering initial state, idempotent start, input forwarding,
 paused tick/physics gating, resume without a duplicate body, stale-input
 clearing, stop, fresh starts, reset from every state, failed spawn/tick,
 independent sessions, diagonal normalization and invalid inputs.
@@ -11,6 +11,16 @@ independent sessions, diagonal normalization and invalid inputs.
 The suite throws on failure and exits nonzero; it does not depend on Java's
 optional `assert` flag. `build` depends on these checks. Test names and a passing
 count are printed to the console.
+
+Fifteen further core tests cover neural arithmetic, finite/range validation,
+immutable mutation, seeded breeding, elite preservation, controller memory,
+grounded novelty scoring, physics-step budgets, the final submitted action,
+pause/resume, seeded reset replay and cleanup after unavailable frames or
+failed actuators/spawns. They also optimise a deterministic XOR objective and
+check that selection/mutation improve the network's score while elitism keeps
+the best score from regressing. This numerical check is not evidence that
+Minecraft agents have learned navigation. Run just this suite with
+`./gradlew :core:evolutionTest`.
 
 ## Minecraft integration checks
 
@@ -25,6 +35,11 @@ are required. The tests exercise:
 4. Command parsing, operator permissions, input gating and lifecycle commands.
 5. Strafing into a wall, physical collision and the block-ahead observation.
 6. Session stop after body removal, fresh restart and idempotent shutdown cleanup.
+
+Six A2 GameTests add candidate/generation replacement with exact tick accounting,
+pause/resume/reset and return to manual control, command ownership and permissions,
+missing-body/shutdown cleanup, bounded champion replay without changing training
+statistics, and real registered command/server-tick events driving a complete run.
 
 Results are written to `fabric/build/test-results/gametest.xml`; logs are in
 `fabric/build/gametest/logs/`. CI uploads these and the built mod as artifacts.
@@ -66,3 +81,21 @@ The local Gradle launch was blocked before dependency resolution by restricted
 network sockets (`java.net.SocketException: Operation not permitted`). Fabric
 compilation and GameTest execution are therefore checked in GitHub Actions.
 Graphical rendering and interactive observer checks require a manual client run.
+
+## Manual evolution smoke check
+
+Restart Minecraft with the rebuilt mod, stand in a clear superflat area and run
+`/mineogenesis stop`, then `/mineogenesis evolution start 42 4 60 5`. At 20 TPS
+this takes approximately a minute. Verify changing generation/candidate labels,
+one body at a time, fresh spawn position each episode and generation summaries
+in `/mineogenesis evolution status` and the server log. Pause/resume during an
+episode, confirm counters freeze and try a manual input while neural control is
+active: it must be rejected. On completion verify removal and a COMPLETED summary.
+Use `evolution replay` to watch the best evaluated controller for one episode;
+training counters and fitness must remain unchanged. Reset must clear the
+champion, and replay without a champion must fail cleanly.
+
+The user has confirmed the main A1 single-player spawn/movement and lifecycle
+checks. A2 visual/generation checks and the multi-observer acceptance check
+remain manual. Numerical or headless passes do not establish generalisation,
+full-world repeatability, mining ability or population throughput.
