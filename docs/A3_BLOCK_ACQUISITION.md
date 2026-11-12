@@ -12,8 +12,10 @@ coordinates, auto-aim, paths or automatic mining decisions are provided.
 
 Extend the game-independent actuator/observation contracts with pitch, mining,
 target-in-view, breaking progress and collected-log count. The network becomes
-11-8-6 (150 genes): the existing eight inputs plus target-in-view, mining progress
-and inventory count; six outputs provide forward, strafe, yaw, pitch, jump, mine.
+12-8-6 (158 genes): the existing eight inputs plus target-in-view, mining progress,
+inventory count and current pitch; six outputs provide forward, strafe, yaw,
+pitch, jump, mine. Current pitch gives the new look actuator feedback about its
+own orientation without revealing a target direction.
 The A2 eight-input/four-output genomes are not compatible; no disk checkpoints
 exist yet, and the release/seed behaviour will be versioned accordingly.
 

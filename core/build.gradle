@@ -14,3 +14,10 @@ tasks.register('evolutionTest', JavaExec) {
     mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionTests'
 }
 tasks.named('test') { dependsOn evolutionTest }
+
+tasks.register('acquisitionTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.acquisition.AcquisitionTests'
+}
+tasks.named('test') { dependsOn acquisitionTest }

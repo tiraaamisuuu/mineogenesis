@@ -13,12 +13,12 @@ public final class EvolutionTests {
         test("network zero weights and known bias output", () -> {
             double[] genes = new double[NetworkGenome.GENE_COUNT];
             double[] result = output(new NetworkGenome(genes));
-            check(Arrays.equals(result, new double[4]), "Zero network must output zero");
-            genes[80] = 1; // First output bias: hidden rows occupy 72 genes.
+            check(Arrays.equals(result, new double[NetworkGenome.OUTPUTS]), "Zero network must output zero");
+            genes[(NetworkGenome.INPUTS + 1) * NetworkGenome.HIDDEN + NetworkGenome.HIDDEN] = 1; // First output bias: bias follows all hidden rows and output weights.
             result = output(new NetworkGenome(genes));
             close(result[0], Math.tanh(1));
             close(result[1], 0);
-            check(NetworkGenome.GENE_COUNT == 108, "Fixed topology gene count");
+            check(NetworkGenome.GENE_COUNT == 158, "Fixed topology gene count");
         });
         test("network validates genes and inference buffers", () -> {
             rejects(IllegalArgumentException.class, () -> new NetworkGenome(new double[1]));
@@ -28,11 +28,11 @@ public final class EvolutionTests {
             bad[0] = 9;
             rejects(IllegalArgumentException.class, () -> new NetworkGenome(bad));
             var genome = NetworkGenome.random(new Random(1));
-            rejects(IllegalArgumentException.class, () -> genome.evaluate(new double[1], new double[8], new double[4]));
-            double[] input = new double[8];
-            rejects(IllegalArgumentException.class, () -> genome.evaluate(input, input, new double[4]));
+            rejects(IllegalArgumentException.class, () -> genome.evaluate(new double[1], new double[NetworkGenome.HIDDEN], new double[NetworkGenome.OUTPUTS]));
+            double[] input = new double[NetworkGenome.INPUTS];
+            rejects(IllegalArgumentException.class, () -> genome.evaluate(input, input, new double[NetworkGenome.OUTPUTS]));
             input[0] = Double.POSITIVE_INFINITY;
-            rejects(IllegalArgumentException.class, () -> genome.evaluate(input, new double[8], new double[4]));
+            rejects(IllegalArgumentException.class, () -> genome.evaluate(input, new double[NetworkGenome.HIDDEN], new double[NetworkGenome.OUTPUTS]));
         });
         test("genome copies and mutation never alter the parent", () -> {
             double[] genes = new double[NetworkGenome.GENE_COUNT];
@@ -86,9 +86,9 @@ public final class EvolutionTests {
         });
         test("controller output bounds and memory reset", () -> {
             double[] genes = new double[NetworkGenome.GENE_COUNT];
-            genes[80] = 1; // constant forward drive
-            genes[73] = 1; // output forward also uses hidden neuron 1
-            genes[15] = 1; // hidden neuron 1 receives previous forward (input 6)
+            genes[(NetworkGenome.INPUTS + 1) * NetworkGenome.HIDDEN + NetworkGenome.HIDDEN] = 1; // constant forward drive
+            genes[(NetworkGenome.INPUTS + 1) * NetworkGenome.HIDDEN + 1] = 1; // output forward also uses hidden neuron 1
+            genes[NetworkGenome.INPUTS + 1 + 6] = 1; // hidden neuron 1 receives previous forward (input 6)
             var controller = new NeuralController(new NetworkGenome(genes));
             AgentInput first = controller.decide(observation(true));
             AgentInput second = controller.decide(observation(true));
@@ -205,13 +205,13 @@ public final class EvolutionTests {
         return new AgentFrame(observation(grounded), x, z);
     }
     private static double[] output(NetworkGenome genome) {
-        double[] result = new double[4]; genome.evaluate(new double[8], new double[8], result); return result;
+        double[] result = new double[NetworkGenome.OUTPUTS]; genome.evaluate(new double[NetworkGenome.INPUTS], new double[NetworkGenome.HIDDEN], result); return result;
     }
     private static double xorFitness(NetworkGenome genome) {
         double loss = 0;
         for (int x = 0; x < 2; x++) for (int y = 0; y < 2; y++) {
-            double[] input = new double[8], result = new double[4]; input[0] = x; input[1] = y;
-            genome.evaluate(input, new double[8], result);
+            double[] input = new double[NetworkGenome.INPUTS], result = new double[NetworkGenome.OUTPUTS]; input[0] = x; input[1] = y;
+            genome.evaluate(input, new double[NetworkGenome.HIDDEN], result);
             double expected = x == y ? -1 : 1;
             loss += Math.pow(expected - result[0], 2);
         }
