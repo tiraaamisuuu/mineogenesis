@@ -68,5 +68,6 @@ public final class ExperimentManager {
 
     public ExperimentState state() { return state; }
     public long elapsedTicks() { return elapsedTicks; }
+    public AgentInput input() { return input; }
     public Optional<AgentObservation> observation() { return environment.observe(); }
 }

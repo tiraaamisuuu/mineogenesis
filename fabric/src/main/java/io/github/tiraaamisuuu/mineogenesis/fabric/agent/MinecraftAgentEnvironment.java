@@ -21,15 +21,21 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
     private ServerWorld world;
     private Vec3d origin;
     private float yaw;
+    private float pitch;
     private AgentEntity agent;
     private AcquisitionTarget target;
     private BlockAcquisitionTrial trial;
 
     public void configure(ServerWorld world, Vec3d origin, float yaw) {
+        configure(world, origin, yaw, 0);
+    }
+
+    public void configure(ServerWorld world, Vec3d origin, float yaw, float pitch) {
         if (agent != null) throw new IllegalStateException("Stop or reset before changing the spawn point");
         this.world = world;
         this.origin = origin;
         this.yaw = yaw;
+        this.pitch = pitch;
     }
 
     public void configureAcquisition(AcquisitionTarget target) {
@@ -47,7 +53,7 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
             throw new IllegalStateException("Spawn point must be in an entity-ticking chunk near an observer");
         }
         var candidate = new AgentEntity(AgentEntities.AGENT, world);
-        candidate.refreshPositionAndAngles(origin.x, origin.y, origin.z, yaw, 0);
+        candidate.refreshPositionAndAngles(origin.x, origin.y, origin.z, yaw, pitch);
         candidate.setHeadYaw(yaw);
         candidate.setBodyYaw(yaw);
         candidate.setCustomName(Text.literal("Agent 1"));
@@ -88,6 +94,14 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
     public void apply(AgentInput input) {
         if (!available()) throw new IllegalStateException("Agent was removed or left entity-ticking chunks");
         agent.setInput(input);
+    }
+
+    public void setView(float yaw, float pitch) {
+        if (!available()) throw new IllegalStateException("No agent is available");
+        agent.setYaw(yaw);
+        agent.setHeadYaw(yaw);
+        agent.setBodyYaw(yaw);
+        agent.setPitch(pitch);
     }
 
     @Override

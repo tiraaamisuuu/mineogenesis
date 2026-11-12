@@ -6,6 +6,11 @@ import io.github.tiraaamisuuu.mineogenesis.core.AgentInput;
 import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionConfig;
 import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionRun;
 import io.github.tiraaamisuuu.mineogenesis.core.evolution.NeuralController;
+import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionObjective;
+import io.github.tiraaamisuuu.mineogenesis.fabric.acquisition.AcquisitionTarget;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.world.RaycastContext;
 import io.github.tiraaamisuuu.mineogenesis.fabric.Mineogenesis;
 import io.github.tiraaamisuuu.mineogenesis.fabric.agent.MinecraftAgentEnvironment;
 import net.minecraft.server.command.ServerCommandSource;
@@ -21,9 +26,11 @@ public final class ExperimentSession {
     private int reportedGeneration;
     private NeuralController replayController;
     private SpawnPoint trainingSpawn;
+    private AcquisitionTarget selectedTarget;
+    private AcquisitionTarget trainingTarget;
 
-    private record SpawnPoint(ServerWorld world, Vec3d position, float yaw) {
-        void configure(MinecraftAgentEnvironment environment) { environment.configure(world, position, yaw); }
+    private record SpawnPoint(ServerWorld world, Vec3d position, float yaw, float pitch) {
+        void configure(MinecraftAgentEnvironment environment) { environment.configure(world, position, yaw, pitch); }
     }
 
     public ExperimentManager manager() { return manager; }
@@ -40,6 +47,7 @@ public final class ExperimentSession {
         if (evolutionActive()) return false;
         if (manager.state() == ExperimentState.READY || manager.state() == ExperimentState.STOPPED) {
             configureSpawn(source);
+            environment.configureAcquisition(null);
             replayController = null;
         } else if (manager.state() == ExperimentState.PAUSED && replayController != null) {
             replayController.resetMemory();
@@ -49,12 +57,27 @@ public final class ExperimentSession {
     }
 
     public void startEvolution(ServerCommandSource source, EvolutionConfig config) {
+        startEvolution(source, config, EvolutionObjective.EXPLORATION);
+    }
+
+    public void startAcquisition(ServerCommandSource source, EvolutionConfig config) {
+        targetFor(source).verifyOriginal();
+        startEvolution(source, config, EvolutionObjective.OAK_LOG_ACQUISITION);
+    }
+
+    private void requireIdle() {
         if (manager.state() == ExperimentState.RUNNING || manager.state() == ExperimentState.PAUSED || evolutionActive()) {
-            throw new IllegalStateException("Stop the active experiment before starting a new evolution run");
+            throw new IllegalStateException("Stop the active experiment before changing modes or targets");
         }
+    }
+
+    private void startEvolution(ServerCommandSource source, EvolutionConfig config, EvolutionObjective objective) {
+        requireIdle();
         trainingSpawn = configureSpawn(source);
+        trainingTarget = objective == EvolutionObjective.OAK_LOG_ACQUISITION ? targetFor(source) : null;
+        environment.configureAcquisition(trainingTarget);
         replayController = null;
-        evolution = new EvolutionRun(environment, config);
+        evolution = new EvolutionRun(environment, config, objective);
         evolutionMode = true;
         reportedGeneration = 0;
         evolution.start();
@@ -64,12 +87,69 @@ public final class ExperimentSession {
 
     public boolean pause() { return evolutionMode ? evolution().pause() : manager.pause(); }
 
+    public void selectTarget(ServerCommandSource source) {
+        requireIdle();
+        if (!(source.getEntity() instanceof ServerPlayerEntity player)) {
+            throw new IllegalArgumentException("A player must look at the oak log to select it");
+        }
+        Vec3d eye = player.getEyePos();
+        var hit = source.getWorld().raycast(new RaycastContext(eye, eye.add(player.getRotationVec(1).multiply(8)),
+                RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, player));
+        if (hit.getType() != HitResult.Type.BLOCK) throw new IllegalArgumentException("Look at an oak log within eight blocks");
+        selectedTarget = AcquisitionTarget.capture(source.getWorld(), hit.getBlockPos());
+    }
+
+    /** Also supports command-block/test fixtures without manufacturing a player. */
+    public void selectTarget(ServerCommandSource source, net.minecraft.util.math.BlockPos position) {
+        requireIdle();
+        if (source.getPosition().squaredDistanceTo(Vec3d.ofCenter(position)) > 64) {
+            throw new IllegalArgumentException("Target must be within eight blocks of the command source");
+        }
+        selectedTarget = AcquisitionTarget.capture(source.getWorld(), position);
+    }
+
+    public void clearTarget() { requireIdle(); selectedTarget = null; }
+
+    public String targetStatus() {
+        return selectedTarget == null ? "No acquisition target selected" : "Selected oak log at " + selectedTarget.position().toShortString()
+                + " in " + selectedTarget.world().getRegistryKey().getValue();
+    }
+
+    private AcquisitionTarget targetFor(ServerCommandSource source) {
+        if (selectedTarget == null) throw new IllegalStateException("Select an oak log with acquisition target first");
+        if (selectedTarget.world() != source.getWorld()) throw new IllegalArgumentException("Selected target is in a different world");
+        return selectedTarget;
+    }
+
+    public void startManualAcquisition(ServerCommandSource source) {
+        requireIdle();
+        AcquisitionTarget target = targetFor(source);
+        target.verifyOriginal();
+        configureSpawn(source);
+        environment.configureAcquisition(target);
+        replayController = null;
+        evolutionMode = false;
+        manager.start();
+    }
+
+    public void setManualMine(boolean mine) {
+        var old = manager.input();
+        setManualInput(new AgentInput(old.forward(), old.strafe(), old.yawDelta(), old.pitchDelta(), old.jump(), mine));
+    }
+
+    public void setManualView(float yaw, float pitch) {
+        var old = manager.input();
+        setManualInput(new AgentInput(old.forward(), old.strafe(), 0, 0, old.jump(), old.mine()));
+        environment.setView(yaw, pitch);
+    }
+
     public void replayChampion() {
         if (manager.state() == ExperimentState.RUNNING || manager.state() == ExperimentState.PAUSED || evolutionActive()) {
             throw new IllegalStateException("Stop the active experiment before replaying the champion");
         }
         var genome = evolution().champion().orElseThrow(() -> new IllegalStateException("No completed candidate to replay yet"));
         trainingSpawn.configure(environment);
+        environment.configureAcquisition(trainingTarget);
         manager.start();
         environment.setRunning(false);
         environment.label("Best network | fitness " + evolution.bestFitness());
@@ -106,14 +186,14 @@ public final class ExperimentSession {
     public String evolutionStatus() {
         EvolutionRun run = evolution();
         String previous = run.lastStats().map(stats -> String.format(java.util.Locale.ROOT,
-                ", lastGen=%d best=%.1f mean=%.2f worst=%.1f", stats.generation(), stats.bestFitness(),
-                stats.meanFitness(), stats.worstFitness())).orElse("");
-        return "Evolution " + run.state() + ", seed=" + run.config().seed()
+                ", lastGen=%d best=%.1f mean=%.2f worst=%.1f successes=%d/%d", stats.generation(), stats.bestFitness(),
+                stats.meanFitness(), stats.worstFitness(), stats.successfulCandidates(), run.config().populationSize())).orElse("");
+        return "Evolution " + run.state() + ", objective=" + run.objective() + ", seed=" + run.config().seed()
                 + ", generation=" + run.generation() + "/" + run.config().generations()
                 + ", agent=" + run.individual() + "/" + run.config().populationSize()
                 + ", episodeTicks=" + run.episodeTicks() + "/" + run.config().episodeTicks()
                 + ", totalTicks=" + run.totalTicks() + ", fitness=" + run.currentFitness()
-                + ", bestEver=" + run.bestFitness() + previous
+                + ", bestEver=" + run.bestFitness() + ", collectedEpisodes=" + run.totalSuccesses() + previous
                 + (run.failureReason().isBlank() ? "" : ", reason=" + run.failureReason());
     }
 
@@ -127,7 +207,7 @@ public final class ExperimentSession {
         double radians = Math.toRadians(yaw);
         // Captured once per run; every candidate restarts at this same position/orientation.
         Vec3d spawn = source.getPosition().add(-Math.sin(radians) * 2, 0, Math.cos(radians) * 2);
-        var point = new SpawnPoint(source.getWorld(), spawn, yaw);
+        var point = new SpawnPoint(source.getWorld(), spawn, yaw, source.getRotation().x);
         point.configure(environment);
         return point;
     }
@@ -140,8 +220,9 @@ public final class ExperimentSession {
             evolution.lastStats().ifPresent(stats -> {
                 if (stats.generation() > reportedGeneration) {
                     reportedGeneration = stats.generation();
-                    Mineogenesis.LOGGER.info("Generation {}: best={}, mean={}, worst={}, bestEver={}",
-                            stats.generation(), stats.bestFitness(), stats.meanFitness(), stats.worstFitness(), evolution.bestFitness());
+                    Mineogenesis.LOGGER.info("Generation {}: best={}, mean={}, worst={}, successes={}, bestEver={}",
+                            stats.generation(), stats.bestFitness(), stats.meanFitness(), stats.worstFitness(),
+                            stats.successfulCandidates(), evolution.bestFitness());
                 }
             });
             if (before != EvolutionRun.State.COMPLETED && evolution.state() == EvolutionRun.State.COMPLETED) {
