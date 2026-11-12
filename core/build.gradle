@@ -7,3 +7,10 @@ tasks.register('foundationTest', JavaExec) {
     mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.FoundationTests'
 }
 tasks.named('test') { dependsOn foundationTest }
+
+tasks.register('evolutionTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionTests'
+}
+tasks.named('test') { dependsOn evolutionTest }
