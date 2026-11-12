@@ -153,7 +153,8 @@ public final class EvolutionGameTests implements FabricGameTest {
     }
     private static List<AgentEntity> bodies(TestContext ctx) {
         return ctx.getWorld().getEntitiesByClass(AgentEntity.class,
-                new Box(ctx.getAbsolutePos(new BlockPos(0, 0, 0)), ctx.getAbsolutePos(new BlockPos(8, 8, 8))),
+                new Box(Vec3d.of(ctx.getAbsolutePos(new BlockPos(0, 0, 0))),
+                        Vec3d.of(ctx.getAbsolutePos(new BlockPos(8, 8, 8)))),
                 entity -> !entity.isRemoved());
     }
     private static AgentEntity body(TestContext ctx) {
