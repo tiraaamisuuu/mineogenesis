@@ -29,6 +29,12 @@ jobs:
         run: python3 scripts/check-mod-jar.py fabric/build/libs/mineogenesis-0.1.0.jar
       - name: Run Minecraft server integration tests
         run: ./gradlew --no-daemon :fabric:runGameTestServer
+      - name: Print Minecraft assertion results
+        if: always()
+        run: |
+          if [ -f fabric/build/test-results/gametest.xml ]; then
+            cat fabric/build/test-results/gametest.xml
+          fi
       - name: Upload test reports and logs
         if: always()
         uses: actions/upload-artifact@v4
