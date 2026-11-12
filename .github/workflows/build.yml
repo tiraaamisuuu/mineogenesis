@@ -1,5 +1,13 @@
 name: Build and test
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -17,6 +25,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build client and server sources; run core tests
         run: ./gradlew --no-daemon build
+      - name: Verify installable mod packaging
+        run: python3 scripts/check-mod-jar.py fabric/build/libs/mineogenesis-0.1.0.jar
       - name: Run Minecraft server integration tests
         run: ./gradlew --no-daemon :fabric:runGameTestServer
       - name: Upload test reports and logs

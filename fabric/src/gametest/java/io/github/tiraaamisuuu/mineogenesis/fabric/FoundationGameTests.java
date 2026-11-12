@@ -150,6 +150,57 @@ public final class FoundationGameTests implements FabricGameTest {
         ctx.complete();
     }
 
+    @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 40)
+    public void strafeCollisionAndBlockObservation(TestContext ctx) {
+        floor(ctx);
+        // At yaw zero positive strafe moves toward decreasing X. No navigation is provided.
+        for (int z = 1; z < 7; z++) {
+            ctx.setBlockState(new BlockPos(1, 2, z), Blocks.STONE);
+            ctx.setBlockState(new BlockPos(1, 3, z), Blocks.STONE);
+        }
+        Vec3d origin = Vec3d.ofBottomCenter(ctx.getAbsolutePos(new BlockPos(3, 2, 3)));
+        var environment = new MinecraftAgentEnvironment();
+        environment.configure(ctx.getWorld(), origin, 0);
+        var manager = new ExperimentManager(environment);
+        manager.start();
+        AgentEntity agent = body(ctx, origin);
+        manager.setInput(new AgentInput(0, 1, 0, false));
+        manager.tick();
+        ctx.runAtTick(25, () -> {
+            ctx.assertTrue(agent.getX() < origin.x - 0.1, "Strafe must move left relative to yaw");
+            ctx.assertTrue(agent.horizontalCollision, "Solid wall must block the body");
+            agent.setYaw(90);
+            manager.pause();
+            ctx.assertTrue(manager.observation().orElseThrow().blockAhead().equals("minecraft:stone"),
+                    "Raycast must report the wall ahead");
+            manager.reset();
+            ctx.complete();
+        });
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void removedBodyStopsSessionAndAllowsRestart(TestContext ctx) {
+        floor(ctx);
+        var session = new ExperimentSession();
+        var source = ctx.getWorld().getServer().getCommandSource()
+                .withWorld(ctx.getWorld())
+                .withPosition(Vec3d.ofBottomCenter(ctx.getAbsolutePos(new BlockPos(2, 2, 2))))
+                .withRotation(new Vec2f(0, 0)).withLevel(2);
+        session.start(source);
+        body(ctx, source.getPosition().add(0, 0, 2)).discard();
+        session.tick();
+        ctx.assertTrue(session.manager().state() == ExperimentState.STOPPED,
+                "Losing the body must stop the session");
+        ctx.assertTrue(session.manager().observation().isEmpty(), "Removed body must not be observed");
+        session.start(source);
+        ctx.assertTrue(session.manager().state() == ExperimentState.RUNNING, "A fresh run must be possible");
+        AgentEntity replacement = body(ctx, source.getPosition().add(0, 0, 2));
+        session.close();
+        session.close();
+        ctx.assertTrue(replacement.isRemoved(), "Shutdown cleanup must discard the body idempotently");
+        ctx.complete();
+    }
+
     private static void floor(TestContext ctx) {
         for (int x = 0; x < 8; x++) {
             for (int z = 0; z < 8; z++) ctx.setBlockState(new BlockPos(x, 1, z), Blocks.STONE);

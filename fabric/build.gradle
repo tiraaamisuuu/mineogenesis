@@ -49,3 +49,7 @@ processResources {
     inputs.property 'version', project.version
     filesMatching('fabric.mod.json') { expand version: project.version }
 }
+
+tasks.named('jar') {
+    from(rootProject.file('LICENSE')) { rename { 'LICENSE_mineogenesis' } }
+}

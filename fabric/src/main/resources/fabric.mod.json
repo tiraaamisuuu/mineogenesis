@@ -5,6 +5,7 @@
   "name": "Mineogenesis",
   "description": "An experimental platform for neuroevolution in Minecraft. Phase A1 foundations.",
   "authors": ["tiraaamisuuu"],
+  "license": "MIT",
   "contact": {"sources": "https://github.com/tiraaamisuuu/mineogenesis"},
   "environment": "*",
   "entrypoints": {
