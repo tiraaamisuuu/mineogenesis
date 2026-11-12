@@ -3,12 +3,12 @@
 **Neuroevolution in Minecraft.** An experimental platform for studying whether
 useful behaviour can emerge through evolutionary learning.
 
-This branch implements **A1 foundations and the first A2 evolution checkpoint**:
+This branch implements **A1 foundations, A2 evolution and a first A3 acquisition checkpoint**:
 a manually controllable humanoid plus seeded neural populations evaluated through
 one visible body at a time. Networks evolve through selection, mutation and
-elitism, using a small ground-exploration objective. See the
+elitism, using ground-exploration or selected oak-log collection objectives. See the
 [project brief](PROJECT_BRIEF.md), [foundation decisions](docs/ARCHITECTURE.md)
-and [A2 design and limitations](docs/A2_EVOLUTION.md).
+the [A2 design](docs/A2_EVOLUTION.md) and [A3 design and limitations](docs/A3_BLOCK_ACQUISITION.md).
 
 ## Requirements
 
@@ -31,13 +31,13 @@ toolchain and Minecraft dependencies.
 ```sh
 git clone https://github.com/tiraaamisuuu/mineogenesis.git
 cd mineogenesis
-git switch phase-a2-evolution
+git switch phase-a3-block-acquisition
 ./gradlew build
 ./gradlew :fabric:runGameTestServer
 ```
 
 On Windows use `gradlew.bat`. The installable mod is
-`fabric/build/libs/mineogenesis-0.2.0.jar`. Do not install the sources JAR or the
+`fabric/build/libs/mineogenesis-0.3.0.jar`. Do not install the sources JAR or the
 separate core JAR; the mod includes core automatically.
 
 On NixOS, use the included development shell:
@@ -65,7 +65,92 @@ The [test guide](docs/TESTING.md) distinguishes automated checks from the manual
 rendering/observer checks. CI builds the client and server code, runs core tests
 and launches the headless Minecraft integration-test server.
 
-## Try evolution
+## Try selected oak-log acquisition
+
+Use a disposable Creative superflat training world with cheats. The experiment
+temporarily breaks **one explicitly selected log**, restoring its original state
+on normal candidate reset, stop, completion and shutdown. An abrupt process crash
+has no persisted recovery journal yet. Use a player-placed test log and keep
+other actors from editing the fixture.
+
+Restart Minecraft after rebuilding. On NixOS:
+
+```sh
+nix-shell --run './gradlew --no-daemon :fabric:runClient'
+```
+
+Build a two-block-high oak-log pillar on a clear, level surface. Stand on the
+ground about **four blocks from it**, and look at the **upper log**. This puts
+the body, which spawns two blocks ahead of you, within mining reach without
+spawning inside the pillar. Then run:
+
+```mcfunction
+/mineogenesis stop
+/mineogenesis acquisition target
+/mineogenesis acquisition start 42 4 160 3
+/mineogenesis acquisition status
+```
+
+This evaluates four candidates for up to eight seconds each over three
+generations: at most **96 seconds** at 20 TPS, shorter if candidates collect the
+log. Each candidate starts with a fresh body and the selected log restored.
+The network controls movement, yaw, pitch, jump and a held mining input. Only
+the selected log can be broken. Mining requires a clear three-block eye ray
+and sustained input; breaking alone is not success. The log must drop as a
+real item and enter the body's inventory through contact with its own loot.
+Other world items are not collected.
+
+Status reports target visibility, mining progress, collected logs, fitness and
+generation collection successes. The main reward is 100 for actual collection;
+seeing the target, partial mining and exploration provide at most 11.5 total
+shaping points. An episode can finish early only after pickup is observed.
+Random initial controllers may fail, and a short run is not a guarantee of
+learned acquisition. The test demonstrates a task interface, not general tree
+search, automatic aiming or survival.
+
+| Command suffix after `/mineogenesis` | Behaviour |
+| --- | --- |
+| `acquisition target` | Select the oak log you look at, within eight blocks; no terrain edit |
+| `acquisition target <x> <y> <z>` | Select an oak log within eight blocks using coordinates, including relative coordinates |
+| `acquisition clear` | Clear idle target selection |
+| `acquisition start [seed]` | Start acquisition defaults: 16 candidates, 200 ticks maximum, 10 generations |
+| `acquisition start <seed> <population> <ticks> <generations>` | Start a bounded configured acquisition run |
+| `acquisition manual` | Spawn a manually controlled body with the same selected-log actuator rules |
+| `acquisition status` | Show target, current mode, progress and inventory/success counters |
+| `agent mine <true/false>` | Set held mining in manual mode while preserving other manual inputs |
+| `agent view <yaw> <pitch>` | Set manual view angles and clear angular velocity; positive pitch looks down |
+
+Root `pause`, `start` (resume), `stop`, `reset`, plus `evolution status` and
+`evolution replay`, also apply to neural acquisition. Target changes and manual
+inputs are rejected during neural control. Reset clears results while keeping
+the target selection as configuration; `acquisition clear` clears the selection.
+The acquisition defaults take up to **26 minutes 40 seconds** at 20 TPS.
+
+For a manual mechanics check with the same upper-log fixture, run:
+
+```mcfunction
+/mineogenesis stop
+/mineogenesis acquisition manual
+/mineogenesis agent mine true
+/mineogenesis acquisition status
+```
+
+The selected log should crack and break after roughly three seconds of valid
+grounded hand mining. Then use `/mineogenesis agent control 1 0 0 false` to
+approach the drop, and inspect `collectedLogs=1` with `acquisition status`.
+Stopping removes the carrying body and restores the target. There is one
+inventory slot, no player inventory interface and no delivery of farmed logs
+to the observer.
+
+The mining profile uses `1 / (hardness * 30)` progress per valid grounded tick,
+with fivefold airborne and submerged penalties. Tools, enchantments, status
+effects, full player interaction permissions and arbitrary blocks are outside
+this checkpoint. Pause freezes body movement and mining; the surrounding world
+and item-entity physics continue. A temporary target-chunk ticket permits normal
+cleanup without changing persistent forced chunks. Outside edits are preserved;
+an unexpected block or missing owned drop aborts the trial.
+
+## Try exploration evolution
 
 Restart the development client after rebuilding; an already-running Minecraft
 process keeps its loaded classes. On NixOS:
@@ -194,13 +279,14 @@ vanilla living-entity jump timing. No input means no intentional movement.
 One session belongs to each Minecraft server instance. World access and input
 application stay on the server thread. Bodies are transient and removed on
 stop, reset or shutdown. Removing a body or leaving entity-ticking chunks stops
-its run; the experiment does not force-load chunks. Stay within simulation
+its run. Exploration does not force-load chunks; acquisition temporarily leases
+the selected target chunk for cleanup. Stay within simulation
 distance while observing, even if the body remains visible at a longer distance.
 
 ## Current limitations
 
 There is one invulnerable, unarmed humanoid body. It is a custom living entity,
-not a connected player: no player list entry, inventory, skin service, mining,
+with a single acquisition inventory slot and no player list entry, skin service,
 crafting or survival mechanics. Movement uses vanilla living-entity physics,
 which is not a claim of exact player-physics equivalence.
 
@@ -214,9 +300,11 @@ entire Minecraft world. All candidates restart at the same position and yaw,
 but observers, other entities, blocks, time and weather can affect outcomes.
 Use a quiet, unchanged area. Position is used only by the fitness evaluator;
 networks receive local velocities, ground/collision/block-ahead flags and their
-previous movement inputs, with no target coordinates. The model is a fixed
-8-8-4 tanh network (108 weights and biases). Checkpoints, controlled arenas,
-simultaneous agent populations and block acquisition are later milestones.
+previous movement inputs, plus local target-in-view, mining progress, inventory
+count and own pitch. There are no target coordinates in network inputs. The
+model is now a fixed 12-8-6 tanh network (158 weights and biases); seeds do not
+replay the old 0.2.0 topology. Checkpoints, controlled arenas, simultaneous agent
+populations and generalised block acquisition remain later milestones.
 
 ## License
 

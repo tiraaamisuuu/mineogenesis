@@ -32,7 +32,7 @@ public final class AcquisitionCommands {
                             session.clearTarget(); return "Acquisition target cleared";
                         })))
                         .then(literal("status").executes(ctx -> execute(ctx, sessions, session ->
-                                session.targetStatus() + "; " + session.status())))
+                                session.acquisitionStatus())))
                         .then(literal("manual").executes(ctx -> execute(ctx, sessions, session -> {
                             session.startManualAcquisition(ctx.getSource()); return "Manual acquisition active; only the selected log can be mined";
                         })))

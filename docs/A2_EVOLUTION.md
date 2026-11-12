@@ -30,6 +30,11 @@ Inputs are body-relative forward/sideways velocity, vertical velocity,
 ground contact, horizontal collision, a solid block ahead, and previous
 forward/strafe inputs. Outputs control forward, strafe, yaw change and jump.
 
+This records the 0.2.0 checkpoint. The subsequent
+[A3 extension](A3_BLOCK_ACQUISITION.md) expands the current shared model to
+12-8-6 (158 genes), adding pitch, mining and local acquisition observations.
+Seeded genomes from the two topology versions are not compatible.
+
 Each generation evaluates every genome from the same captured spawn point,
 orientation and episode tick budget. One elite survives unchanged; the other
 genomes use tournament selection and independent Gaussian weight mutation.

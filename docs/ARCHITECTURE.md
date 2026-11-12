@@ -5,7 +5,9 @@
 The canonical vision is [PROJECT_BRIEF.md](../PROJECT_BRIEF.md), currently at the
 repository root. A1 establishes experiment lifecycle and one manually controlled
 body. The first evolution extension is documented separately in
-[A2_EVOLUTION.md](A2_EVOLUTION.md). Mining and survival remain later phases.
+[A2_EVOLUTION.md](A2_EVOLUTION.md). The scoped mining/collection extension is
+documented in [A3_BLOCK_ACQUISITION.md](A3_BLOCK_ACQUISITION.md); generalised
+acquisition and survival remain later phases.
 
 ## Toolchain
 

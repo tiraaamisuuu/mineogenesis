@@ -81,8 +81,8 @@ public final class ExperimentSession {
         evolutionMode = true;
         reportedGeneration = 0;
         evolution.start();
-        Mineogenesis.LOGGER.info("Evolution started: seed={}, population={}, ticks={}, generations={}",
-                config.seed(), config.populationSize(), config.episodeTicks(), config.generations());
+        Mineogenesis.LOGGER.info("Evolution started: objective={}, seed={}, population={}, ticks={}, generations={}",
+                objective, config.seed(), config.populationSize(), config.episodeTicks(), config.generations());
     }
 
     public boolean pause() { return evolutionMode ? evolution().pause() : manager.pause(); }
@@ -113,6 +113,13 @@ public final class ExperimentSession {
     public String targetStatus() {
         return selectedTarget == null ? "No acquisition target selected" : "Selected oak log at " + selectedTarget.position().toShortString()
                 + " in " + selectedTarget.world().getRegistryKey().getValue();
+    }
+
+    public String acquisitionStatus() {
+        String body = manager.observation().map(observation -> String.format(java.util.Locale.ROOT,
+                "; targetInView=%s mining=%.2f collectedLogs=%d", observation.targetAhead(),
+                observation.miningProgress(), observation.collectedTarget())).orElse("; no active body");
+        return targetStatus() + "; " + status() + body;
     }
 
     private AcquisitionTarget targetFor(ServerCommandSource source) {

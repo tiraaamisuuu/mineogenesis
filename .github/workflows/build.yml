@@ -26,7 +26,7 @@ jobs:
       - name: Build client and server sources; run core tests
         run: ./gradlew --no-daemon build
       - name: Verify installable mod packaging
-        run: python3 scripts/check-mod-jar.py fabric/build/libs/mineogenesis-0.2.0.jar
+        run: python3 scripts/check-mod-jar.py fabric/build/libs/mineogenesis-0.3.0.jar
       - name: Run Minecraft server integration tests
         run: ./gradlew --no-daemon :fabric:runGameTestServer
       - name: Print Minecraft assertion results
@@ -49,4 +49,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mineogenesis-mod
-          path: fabric/build/libs/mineogenesis-0.2.0.jar
+          path: fabric/build/libs/mineogenesis-0.3.0.jar

@@ -99,3 +99,28 @@ The user has confirmed the main A1 single-player spawn/movement and lifecycle
 checks. A2 visual/generation checks and the multi-observer acceptance check
 remain manual. Numerical or headless passes do not establish generalisation,
 full-world repeatability, mining ability or population throughput.
+
+## Acquisition checks
+
+Seven additional core tests cover legacy input/observation compatibility,
+pitch/mining output mapping, local target/pitch feedback, sixty valid hand-mining
+ticks and interruption, collection-dominant bounded shaping, early termination
+after actual pickup outcomes and collection success counters. The full core
+suite now has 32 tests; `:core:acquisitionTest` runs the seven new checks.
+
+Eight additional Minecraft GameTests check timed breaking and real inventory
+pickup, preservation of unrelated drops, exact original-state restoration,
+release/aim/pause/occlusion, the selected-block allowlist, preserving external
+replacement while cleaning owned resources, candidate resets/replay, pitch
+limits and three-block reach, and invalid selection/obstructed spawn cleanup.
+A fixed-weight neural conformance controller also drives forward/mine inputs
+through the real world to collect a log. This proves the actuator path can
+complete the task, not that evolution learned that controller. The full server
+suite has 20 tests including the A1/A2 cases.
+
+For manual acceptance, use the upper-log fixture and commands in the README in
+a disposable world. Verify crack animation, selection, contact pickup,
+`collectedLogs=1`, target restoration and generation success reporting. Try
+pause/resume, then stop/reset during both breaking and uncollected-drop phases.
+The new visual acquisition checks remain manual until reported by the user.
+Normal cleanup is not a persisted recovery mechanism for abrupt crashes.
