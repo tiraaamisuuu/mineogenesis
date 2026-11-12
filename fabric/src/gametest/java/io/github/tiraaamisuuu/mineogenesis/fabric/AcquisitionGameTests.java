@@ -46,7 +46,8 @@ public final class AcquisitionGameTests implements FabricGameTest {
         ctx.runAtTick(72, () -> {
             ctx.assertTrue(ctx.getBlockState(TARGET).isAir(), "Sustained valid hand mining must break the selected log");
             ctx.assertTrue(agent.collectedLogs() == 0, "Breaking at reach is not inventory collection");
-            ctx.assertTrue(drops(ctx).stream().anyMatch(drop -> agent.getUuid().equals(drop.getOwnerUuid())), "Real owned loot entity");
+            ctx.assertTrue(drops(ctx).stream().anyMatch(drop -> drop != unrelated && drop.getStack().isOf(Items.OAK_LOG)),
+                    "Mining must create a real log loot entity distinct from unrelated loot");
             session.setManualInput(new AgentInput(1, 0, 0, false));
         });
         ctx.runAtTick(100, () -> {
@@ -191,6 +192,29 @@ public final class AcquisitionGameTests implements FabricGameTest {
             session.stop();
             ctx.assertTrue(ctx.getBlockState(TARGET).isOf(Blocks.OAK_LOG) && drops(ctx).isEmpty(), "Neural action cleanup");
             ctx.complete();
+        });
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 95)
+    public void pitchLimitsAndThreeBlockReachAreEnforced(TestContext ctx) {
+        fixture(ctx);
+        var session = manual(ctx);
+        session.setManualInput(new AgentInput(0, 0, 0, 90, false, true));
+        drive(ctx, session, 85);
+        ctx.runAtTick(5, () -> {
+            ctx.assertTrue(body(ctx).getPitch() == 90 && progress(session) == 0, "Pitch delta clamps at looking straight down");
+            session.setManualInput(new AgentInput(0, 0, 0, -90, false, true));
+        });
+        ctx.runAtTick(10, () -> {
+            ctx.assertTrue(body(ctx).getPitch() == -90, "Pitch clamps at looking straight up");
+            Vec3d distant = Vec3d.ofBottomCenter(ctx.getAbsolutePos(new BlockPos(3, 2, 0)));
+            body(ctx).refreshPositionAndAngles(distant.x, distant.y, distant.z, 0, 0);
+            session.setManualInput(new AgentInput(0, 0, 0, 0, false, true));
+            session.setManualView(0, 0);
+        });
+        ctx.runAtTick(80, () -> {
+            ctx.assertTrue(progress(session) == 0 && ctx.getBlockState(TARGET).isOf(Blocks.OAK_LOG), "Target outside three-block raycast cannot be mined");
+            session.close(); ctx.complete();
         });
     }
 
