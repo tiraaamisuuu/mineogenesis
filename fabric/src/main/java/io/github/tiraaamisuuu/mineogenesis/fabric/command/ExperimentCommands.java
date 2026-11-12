@@ -53,8 +53,11 @@ public final class ExperimentCommands {
                                                                         IntegerArgumentType.getInteger(ctx, "ticks"),
                                                                         IntegerArgumentType.getInteger(ctx, "generations"), 0.1, 0.2))))))))
                         .then(literal("status").executes(ctx -> execute(ctx, sessions, session -> {
-                            session.evolution();
-                            return session.status();
+                            return session.evolutionStatus();
+                        })))
+                        .then(literal("replay").executes(ctx -> execute(ctx, sessions, session -> {
+                            session.replayChampion();
+                            return "Replaying the best evolved network at the training spawn; training scores are unchanged";
                         })))
                         .then(literal("pause").executes(ctx -> execute(ctx, sessions, session ->
                                 session.evolution().pause() ? "Evolution paused" : "Evolution is not running")))

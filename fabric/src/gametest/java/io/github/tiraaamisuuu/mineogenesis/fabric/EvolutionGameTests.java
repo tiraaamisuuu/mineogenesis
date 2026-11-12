@@ -11,6 +11,8 @@ import io.github.tiraaamisuuu.mineogenesis.fabric.experiment.ExperimentSession;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.command.CommandOutput;
+import net.minecraft.text.Text;
 import net.minecraft.test.GameTest;
 import net.minecraft.test.TestContext;
 import net.minecraft.util.math.BlockPos;
@@ -18,6 +20,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.math.Vec3d;
 import java.util.List;
+import java.util.ArrayList;
 
 public final class EvolutionGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 40)
@@ -132,6 +135,56 @@ public final class EvolutionGameTests implements FabricGameTest {
         ctx.assertTrue(finalBody.isRemoved() && session.evolution().state() == EvolutionRun.State.READY,
                 "Idempotent server shutdown cleanup");
         ctx.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 35)
+    public void championReplayPreservesTrainingResults(TestContext ctx) {
+        floor(ctx);
+        var session = new ExperimentSession();
+        var dispatcher = dispatcher(session);
+        var source = source(ctx);
+        ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution replay") == 0, "Cannot replay without a champion");
+        command(dispatcher, source, "mineogenesis evolution start 42 2 3 1");
+        drive(ctx, session, 25);
+        ctx.runAtTick(10, () -> {
+            ctx.assertTrue(session.evolution().state() == EvolutionRun.State.COMPLETED, "Training has finished");
+            double best = session.evolution().bestFitness();
+            ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution replay") == 1, "Replay command");
+            ctx.assertTrue(body(ctx).getName().getString().startsWith("Best network"), "Visible replay label");
+            ctx.assertTrue(command(dispatcher, source, "mineogenesis agent control 1 0 0 false") == 0, "Replay owns its controller");
+            ctx.runAtTick(17, () -> {
+                ctx.assertTrue(bodies(ctx).isEmpty() && session.manager().state() == ExperimentState.STOPPED,
+                        "Replay must finish after the training episode budget");
+                ctx.assertTrue(session.evolution().totalTicks() == 6 && session.evolution().bestFitness() == best,
+                        "Replay must not change training fitness or tick accounting");
+                ctx.assertTrue(session.evolutionStatus().contains("COMPLETED"), "Training summary remains accessible after replay");
+                session.close(); ctx.complete();
+            });
+        });
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 30)
+    public void registeredServerTicksDriveEvolutionWithoutTestScheduling(TestContext ctx) {
+        floor(ctx);
+        List<String> feedback = new ArrayList<>();
+        var output = new CommandOutput() {
+            @Override public void sendMessage(Text text) { feedback.add(text.getString()); }
+            @Override public boolean shouldReceiveFeedback() { return true; }
+            @Override public boolean shouldTrackOutput() { return true; }
+            @Override public boolean shouldBroadcastConsoleToOps() { return false; }
+        };
+        var source = source(ctx).withOutput(output);
+        var dispatcher = ctx.getWorld().getServer().getCommandManager().getDispatcher();
+        ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution start 7 2 2 1") == 1,
+                "Real command registration must resolve a live server-owned session");
+        ctx.runAtTick(12, () -> {
+            command(dispatcher, source, "mineogenesis evolution status");
+            ctx.assertTrue(feedback.stream().anyMatch(line -> line.contains("Evolution COMPLETED") && line.contains("totalTicks=4")),
+                    "Registered lifecycle/server tick events must complete the run: " + feedback);
+            ctx.assertTrue(bodies(ctx).isEmpty(), "Automatic completion cleans up the real session's body");
+            command(dispatcher, source, "mineogenesis reset");
+            ctx.complete();
+        });
     }
 
     private static CommandDispatcher<ServerCommandSource> dispatcher(ExperimentSession session) {
