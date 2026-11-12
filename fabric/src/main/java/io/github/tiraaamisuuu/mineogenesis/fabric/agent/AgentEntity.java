@@ -109,7 +109,7 @@ public final class AgentEntity extends LivingEntity {
         super.travel(movementInput);
     }
 
-    // Equipment/inventory semantics are intentionally outside this proof of concept.
+    // Full player equipment is outside this checkpoint; the acquisition slot is separate.
     @Override public Iterable<ItemStack> getArmorItems() { return List.of(); }
     @Override public ItemStack getEquippedStack(EquipmentSlot slot) { return ItemStack.EMPTY; }
     @Override public void equipStack(EquipmentSlot slot, ItemStack stack) { }

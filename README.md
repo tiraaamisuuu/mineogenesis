@@ -7,7 +7,7 @@ This branch implements **A1 foundations, A2 evolution and a first A3 acquisition
 a manually controllable humanoid plus seeded neural populations evaluated through
 one visible body at a time. Networks evolve through selection, mutation and
 elitism, using ground-exploration or selected oak-log collection objectives. See the
-[project brief](PROJECT_BRIEF.md), [foundation decisions](docs/ARCHITECTURE.md)
+[project brief](PROJECT_BRIEF.md), [foundation decisions](docs/ARCHITECTURE.md),
 the [A2 design](docs/A2_EVOLUTION.md) and [A3 design and limitations](docs/A3_BLOCK_ACQUISITION.md).
 
 ## Requirements
