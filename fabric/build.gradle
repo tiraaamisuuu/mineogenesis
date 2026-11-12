@@ -21,6 +21,30 @@ dependencies {
     include project(':core')
 }
 
+// The integration-test mod is loaded only by this run, never packaged for users.
+sourceSets {
+    gametest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+loom {
+    mods {
+        'mineogenesis-test' { sourceSet sourceSets.gametest }
+    }
+    runs {
+        gameTestServer {
+            server()
+            name 'Mineogenesis integration tests'
+            source sourceSets.gametest
+            vmArg '-Dfabric-api.gametest'
+            vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('test-results/gametest.xml').get().asFile}"
+            runDir 'build/gametest'
+        }
+    }
+}
+
 processResources {
     inputs.property 'version', project.version
     filesMatching('fabric.mod.json') { expand version: project.version }
