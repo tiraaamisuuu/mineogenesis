@@ -4,6 +4,8 @@ import io.github.tiraaamisuuu.mineogenesis.core.evolution.AgentFrame;
 import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionEnvironment;
 import io.github.tiraaamisuuu.mineogenesis.core.AgentInput;
 import io.github.tiraaamisuuu.mineogenesis.core.AgentObservation;
+import io.github.tiraaamisuuu.mineogenesis.fabric.acquisition.AcquisitionTarget;
+import io.github.tiraaamisuuu.mineogenesis.fabric.acquisition.BlockAcquisitionTrial;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -20,12 +22,20 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
     private Vec3d origin;
     private float yaw;
     private AgentEntity agent;
+    private AcquisitionTarget target;
+    private BlockAcquisitionTrial trial;
 
     public void configure(ServerWorld world, Vec3d origin, float yaw) {
         if (agent != null) throw new IllegalStateException("Stop or reset before changing the spawn point");
         this.world = world;
         this.origin = origin;
         this.yaw = yaw;
+    }
+
+    public void configureAcquisition(AcquisitionTarget target) {
+        if (agent != null) throw new IllegalStateException("Stop before changing the acquisition target");
+        if (target != null && target.world() != world) throw new IllegalArgumentException("Target must be in the spawn world");
+        this.target = target;
     }
 
     @Override
@@ -47,15 +57,25 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
                 || !world.isSpaceEmpty(candidate)) {
             throw new IllegalStateException("Spawn point is obstructed or outside the world bounds");
         }
-        if (!world.spawnEntity(candidate)) throw new IllegalStateException("Minecraft rejected agent spawn");
+        BlockAcquisitionTrial pending = target == null ? null : new BlockAcquisitionTrial(target, candidate);
+        try {
+            if (!world.spawnEntity(candidate)) throw new IllegalStateException("Minecraft rejected agent spawn");
+        } catch (RuntimeException failure) {
+            if (pending != null) pending.close();
+            candidate.discard();
+            throw failure;
+        }
         agent = candidate;
+        trial = pending;
+        if (trial != null) agent.setInteractionTick(trial::tick);
     }
 
     public boolean available() {
         return agent != null && !agent.isRemoved() && agent.isAlive()
                 && world.getEntity(agent.getUuid()) == agent
                 && world.isChunkLoaded(agent.getBlockPos())
-                && world.shouldTickEntity(agent.getBlockPos());
+                && world.shouldTickEntity(agent.getBlockPos())
+                && (trial == null || trial.healthy());
     }
 
     @Override
@@ -72,6 +92,7 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
 
     @Override
     public Optional<AgentObservation> observe() {
+        if (trial != null) trial.requireHealthy();
         if (!available()) return Optional.empty();
         Vec3d eye = agent.getEyePos();
         BlockHitResult hit = world.raycast(new RaycastContext(eye,
@@ -81,7 +102,8 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
                 : Registries.BLOCK.getId(world.getBlockState(hit.getBlockPos()).getBlock()).toString();
         Vec3d velocity = agent.getVelocity();
         return Optional.of(new AgentObservation(velocity.x, velocity.y, velocity.z,
-                agent.getYaw(), agent.getPitch(), agent.isOnGround(), agent.horizontalCollision, block));
+                agent.getYaw(), agent.getPitch(), agent.isOnGround(), agent.horizontalCollision, block,
+                trial != null && trial.matches(hit), trial == null ? 0 : trial.progress(), agent.collectedLogs()));
     }
 
     @Override
@@ -96,10 +118,16 @@ public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
 
     @Override
     public void remove() {
-        if (agent != null) {
-            agent.setRunning(false);
-            agent.discard();
-            agent = null;
+        try {
+            if (trial != null) trial.close();
+        } finally {
+            trial = null;
+            if (agent != null) {
+                agent.setInteractionTick(null);
+                agent.setRunning(false);
+                agent.discard();
+                agent = null;
+            }
         }
     }
 }
