@@ -1,6 +1,7 @@
 package io.github.tiraaamisuuu.mineogenesis.fabric.agent;
 
-import io.github.tiraaamisuuu.mineogenesis.core.AgentEnvironment;
+import io.github.tiraaamisuuu.mineogenesis.core.evolution.AgentFrame;
+import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionEnvironment;
 import io.github.tiraaamisuuu.mineogenesis.core.AgentInput;
 import io.github.tiraaamisuuu.mineogenesis.core.AgentObservation;
 import net.minecraft.registry.Registries;
@@ -14,7 +15,7 @@ import net.minecraft.world.RaycastContext;
 import java.util.Optional;
 
 /** One body, owned by one experiment. All methods run on the server thread. */
-public final class MinecraftAgentEnvironment implements AgentEnvironment {
+public final class MinecraftAgentEnvironment implements EvolutionEnvironment {
     private ServerWorld world;
     private Vec3d origin;
     private float yaw;
@@ -81,6 +82,16 @@ public final class MinecraftAgentEnvironment implements AgentEnvironment {
         Vec3d velocity = agent.getVelocity();
         return Optional.of(new AgentObservation(velocity.x, velocity.y, velocity.z,
                 agent.getYaw(), agent.getPitch(), agent.isOnGround(), agent.horizontalCollision, block));
+    }
+
+    @Override
+    public Optional<AgentFrame> frame() {
+        return observe().map(observation -> new AgentFrame(observation, agent.getX(), agent.getZ()));
+    }
+
+    @Override
+    public void label(String label) {
+        if (agent != null) agent.setCustomName(Text.literal(label));
     }
 
     @Override

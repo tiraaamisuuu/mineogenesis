@@ -37,9 +37,10 @@ public final class EvolutionRun {
     }
 
     public void tick() {
-        if (state != State.RUNNING) return;
+        if (state != State.RUNNING && state != State.PAUSED) return;
         try {
             AgentFrame frame = requireFrame();
+            if (state == State.PAUSED) return;
             // This frame is the outcome of the LAST submitted action, including the final one.
             if (episodeTicks > 0) fitness.record(frame);
             if (episodeTicks == config.episodeTicks()) {
@@ -47,6 +48,7 @@ public final class EvolutionRun {
                 if (state != State.RUNNING) return;
                 frame = requireFrame();
             }
+            environment.setRunning(true);
             environment.apply(controller.decide(frame.observation()));
             episodeTicks++;
             totalTicks++;
@@ -65,7 +67,6 @@ public final class EvolutionRun {
         try {
             requireFrame();
             controller.resetMemory();
-            environment.setRunning(true);
             state = State.RUNNING;
             return true;
         } catch (RuntimeException failure) { abort(failure); throw failure; }
@@ -94,7 +95,9 @@ public final class EvolutionRun {
 
     private void startEpisode() {
         environment.spawn();
-        environment.setRunning(true);
+        environment.label("Gen " + generation + " | Agent " + (index + 1) + "/" + config.populationSize());
+        // Commands may arrive between world ticks. No idle physics before the first action.
+        environment.setRunning(false);
         fitness = new GroundExplorationFitness(requireFrame());
         controller = new NeuralController(population.genome(index));
         episodeTicks = 0;

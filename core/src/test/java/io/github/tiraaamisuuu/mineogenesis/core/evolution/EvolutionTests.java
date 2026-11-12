@@ -128,6 +128,17 @@ public final class EvolutionTests {
             check(run.lastStats().orElseThrow().bestFitness() == 2, "Final action must earn its new-cell reward");
             check(run.champion().isPresent() && run.generation() == 2 && run.individual() == 2, "Final statistics");
         });
+        test("new and resumed bodies wait for the controller before ticking physics", () -> {
+            var world = new FakeEnvironment();
+            var run = new EvolutionRun(world, config(2, 2, 1));
+            run.start(); world.physics();
+            check(world.x == 0.5 && !world.running, "No uncounted physics before the first control tick");
+            run.tick(); world.physics(); run.pause(); run.resume(); world.physics();
+            check(world.x == 1.5 && !world.running, "Resume must wait for the next driver tick");
+            run.tick(); world.physics();
+            check(world.x == 2.5 && run.totalTicks() == 2, "Exactly two controlled physics steps");
+            run.stop();
+        });
         test("pause and resume preserve counters and pending outcomes", () -> {
             var world = new FakeEnvironment();
             var run = new EvolutionRun(world, config(2, 2, 1));
@@ -160,6 +171,9 @@ public final class EvolutionTests {
             rejects(IllegalStateException.class, run::tick);
             check(run.state() == EvolutionRun.State.STOPPED && run.totalTicks() == 0, "Abort without fabricated progress");
             check(run.lastStats().isEmpty() && !run.failureReason().isBlank(), "Failure reason and no partial statistics");
+            run.reset(); run.start(); run.pause(); world.present = false;
+            rejects(IllegalStateException.class, run::tick);
+            check(run.state() == EvolutionRun.State.STOPPED, "Missing paused body must also abort");
         });
         test("spawn and actuator failures clean up and do not count unsubmitted ticks", () -> {
             var world = new FakeEnvironment();
