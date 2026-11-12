@@ -7,7 +7,7 @@ import zipfile
 with zipfile.ZipFile(sys.argv[1]) as mod:
     names = mod.namelist()
     metadata = json.loads(mod.read("fabric.mod.json"))
-    assert metadata["version"] == "0.1.0", "Unexpanded mod version"
+    assert metadata["version"] and "${" not in metadata["version"], "Unexpanded mod version"
     assert "LICENSE_mineogenesis" in names, "Missing project license"
     assert any(name.endswith("/AgentRenderer.class") for name in names), "Missing client renderer"
     assert not any("GameTests" in name or "mineogenesis-test" in name for name in names), "Test mod leaked into release"

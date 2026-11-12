@@ -7,7 +7,7 @@ import io.github.tiraaamisuuu.mineogenesis.fabric.agent.MinecraftAgentEnvironmen
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.util.math.Vec3d;
 
-/** Server-owned integration object; never shared across worlds/server instances. */
+/** Server-owned integration object with one active world per server instance. */
 public final class ExperimentSession {
     private final MinecraftAgentEnvironment environment = new MinecraftAgentEnvironment();
     private final ExperimentManager manager = new ExperimentManager(environment);
@@ -29,7 +29,7 @@ public final class ExperimentSession {
         if (manager.state() != ExperimentState.RUNNING && manager.state() != ExperimentState.PAUSED) return;
         if (!environment.available()) {
             manager.stop();
-            Mineogenesis.LOGGER.info("Experiment stopped: agent removed or chunk unloaded");
+            Mineogenesis.LOGGER.info("Experiment stopped: agent removed or outside entity-ticking chunks");
             return;
         }
         manager.tick();

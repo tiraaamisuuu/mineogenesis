@@ -57,12 +57,11 @@ public final class AgentEntity extends LivingEntity {
 
     @Override
     public void tickMovement() {
-        // Gate physics on BOTH sides, so a paused body does not fall on the client.
         if (!dataTracker.get(RUNNING)) {
             setVelocity(Vec3d.ZERO);
-            return;
-        }
-        if (!getWorld().isClient) {
+            sidewaysSpeed = forwardSpeed = 0;
+            jumping = false;
+        } else if (!getWorld().isClient) {
             setYaw(MathHelper.wrapDegrees(getYaw() + input.yawDelta()));
             headYaw = bodyYaw = getYaw();
             setMovementSpeed((float) getAttributeValue(EntityAttributes.GENERIC_MOVEMENT_SPEED));
@@ -70,7 +69,19 @@ public final class AgentEntity extends LivingEntity {
             sidewaysSpeed = input.strafe();
             jumping = input.jump();
         }
+        // Keep vanilla interpolation so observers can receive the final paused pose.
         super.tickMovement();
+        if (!dataTracker.get(RUNNING)) setVelocity(Vec3d.ZERO);
+    }
+
+    @Override
+    public void travel(Vec3d movementInput) {
+        // Gate physics on both sides without suppressing network interpolation.
+        if (!dataTracker.get(RUNNING)) {
+            setVelocity(Vec3d.ZERO);
+            return;
+        }
+        super.travel(movementInput);
     }
 
     // Equipment/inventory semantics are intentionally outside this proof of concept.

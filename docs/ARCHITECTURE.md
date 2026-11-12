@@ -50,7 +50,9 @@ choose targets, steer around obstacles or search for blocks.
 * Pause must gate entity physics as well as experiment ticks; simply pausing a
   counter allows gravity and previous movement to continue.
 * Cleanup must handle reset, stop, server shutdown, entity removal and chunk
-  unloading. A1 bodies are transient and must not reappear after loading a save.
+  unloading. Runs also stop outside entity-ticking chunks to avoid counting
+  inputs while body physics is suspended by simulation distance. A1 bodies are
+  transient and must not reappear after loading a save.
 * Minecraft ticking, collision and tracking remain costs per entity. A1 makes no
   population-size or throughput claim. Population benchmarks precede expansion.
 * Pausing the experiment does not pause the world or other entities. Resetting

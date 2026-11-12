@@ -46,7 +46,7 @@ validate rendering and lifecycle integration beyond headless tests:
    of the world continues. Resume: gravity resumes, previous controls stay clear.
 4. Stop and reset in both RUNNING and PAUSED. Confirm disappearance, retained
    ticks on stop, zero ticks on reset, and a fresh single body on the next start.
-5. Leave the body's chunk until it unloads, or use `/kill` as an operator. The
+5. Leave the body's simulation distance, unload its chunk, or use `/kill` as an operator. The
    experiment must stop and allow a new start without an orphaned body.
 6. Save/quit while running and reopen the world. The old body must not return;
    the new integrated-server session must be READY.

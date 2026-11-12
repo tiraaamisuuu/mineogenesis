@@ -113,8 +113,9 @@ vanilla living-entity jump timing. No input means no intentional movement.
 
 One session belongs to each Minecraft server instance. World access and input
 application stay on the server thread. Bodies are transient and removed on
-stop, reset or shutdown. Removing a body or unloading its chunk stops its run;
-the experiment does not force-load chunks.
+stop, reset or shutdown. Removing a body or leaving entity-ticking chunks stops
+its run; the experiment does not force-load chunks. Stay within simulation
+distance while observing, even if the body remains visible at a longer distance.
 
 ## A1 limitations
 

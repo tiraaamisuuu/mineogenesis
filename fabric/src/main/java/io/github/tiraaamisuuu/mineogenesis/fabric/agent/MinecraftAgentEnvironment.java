@@ -31,8 +31,9 @@ public final class MinecraftAgentEnvironment implements AgentEnvironment {
     public void spawn() {
         if (world == null || origin == null) throw new IllegalStateException("No spawn point configured");
         if (agent != null) throw new IllegalStateException("An agent already exists");
-        if (!world.isChunkLoaded(BlockPos.ofFloored(origin))) {
-            throw new IllegalStateException("Spawn point is in an unloaded chunk");
+        if (!world.isChunkLoaded(BlockPos.ofFloored(origin))
+                || !world.shouldTickEntity(BlockPos.ofFloored(origin))) {
+            throw new IllegalStateException("Spawn point must be in an entity-ticking chunk near an observer");
         }
         var candidate = new AgentEntity(AgentEntities.AGENT, world);
         candidate.refreshPositionAndAngles(origin.x, origin.y, origin.z, yaw, 0);
@@ -50,7 +51,8 @@ public final class MinecraftAgentEnvironment implements AgentEnvironment {
     public boolean available() {
         return agent != null && !agent.isRemoved() && agent.isAlive()
                 && world.getEntity(agent.getUuid()) == agent
-                && world.isChunkLoaded(agent.getBlockPos());
+                && world.isChunkLoaded(agent.getBlockPos())
+                && world.shouldTickEntity(agent.getBlockPos());
     }
 
     @Override
@@ -61,7 +63,7 @@ public final class MinecraftAgentEnvironment implements AgentEnvironment {
 
     @Override
     public void apply(AgentInput input) {
-        if (!available()) throw new IllegalStateException("Agent was removed or its chunk unloaded");
+        if (!available()) throw new IllegalStateException("Agent was removed or left entity-ticking chunks");
         agent.setInput(input);
     }
 
