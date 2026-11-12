@@ -1,0 +1,24 @@
+plugins {
+    id 'base'
+}
+
+allprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version
+}
+
+subprojects {
+    plugins.withId('java') {
+        java {
+            toolchain.languageVersion = JavaLanguageVersion.of(21)
+            withSourcesJar()
+        }
+        tasks.withType(JavaCompile).configureEach {
+            options.release = 21
+            options.encoding = 'UTF-8'
+        }
+    }
+}
+
+tasks.named('check') { dependsOn ':core:check', ':fabric:check' }
+tasks.named('assemble') { dependsOn ':core:assemble', ':fabric:assemble' }

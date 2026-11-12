@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "mineogenesis",
+  "version": "${version}",
+  "name": "Mineogenesis",
+  "description": "An experimental platform for neuroevolution in Minecraft. Phase A1 foundations.",
+  "authors": ["tiraaamisuuu"],
+  "license": "MIT",
+  "contact": {"sources": "https://github.com/tiraaamisuuu/mineogenesis"},
+  "environment": "*",
+  "entrypoints": {
+    "main": ["io.github.tiraaamisuuu.mineogenesis.fabric.Mineogenesis"],
+    "client": ["io.github.tiraaamisuuu.mineogenesis.fabric.client.MineogenesisClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": "1.21.1",
+    "java": ">=21",
+    "fabric-api": ">=0.116.6+1.21.1"
+  }
+}
