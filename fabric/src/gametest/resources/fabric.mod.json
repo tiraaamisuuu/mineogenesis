@@ -6,7 +6,8 @@
   "entrypoints": {
     "fabric-gametest": [
       "io.github.tiraaamisuuu.mineogenesis.fabric.FoundationGameTests",
-      "io.github.tiraaamisuuu.mineogenesis.fabric.EvolutionGameTests"
+      "io.github.tiraaamisuuu.mineogenesis.fabric.EvolutionGameTests",
+      "io.github.tiraaamisuuu.mineogenesis.fabric.AcquisitionGameTests"
     ]
   },
   "depends": {"mineogenesis": "*", "fabric-gametest-api-v1": "*"}
