@@ -39,11 +39,20 @@ On Windows use `gradlew.bat`. The installable mod is
 `fabric/build/libs/mineogenesis-0.1.0.jar`. Do not install the sources JAR or the
 separate core JAR; the mod includes core automatically.
 
-On NixOS, a temporary build environment is sufficient:
+On NixOS, use the included development shell:
 
 ```sh
-nix-shell -p jdk21 --run './gradlew build'
+nix-shell --run './gradlew build'
+nix-shell --run './gradlew --no-daemon :fabric:runClient'
 ```
+
+`shell.nix` supplies Java 21 and the native graphics, windowing and audio
+libraries loaded by LWJGL. It also exposes the system GPU drivers through
+`/run/opengl-driver/lib`, while preserving an existing library path. A JDK-only
+shell can build the mod but may fail to launch Minecraft with
+`GLFW error 65542: GLX: Failed to load GLX`. These are development-shell
+dependencies; they are not bundled into the mod. The shell uses your installed
+`<nixpkgs>` channel, so its system packages are not independently pinned.
 
 The core tests can also run offline with a JDK, without Gradle or Minecraft:
 
