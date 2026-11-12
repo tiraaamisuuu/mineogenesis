@@ -1,0 +1,27 @@
+plugins { id 'fabric-loom' version '1.7.4' }
+
+base { archivesName = 'mineogenesis' }
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        mineogenesis {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+    mappings "net.fabricmc:yarn:${rootProject.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version}"
+    implementation project(':core')
+    include project(':core')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}

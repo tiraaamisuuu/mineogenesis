@@ -1,0 +1,9 @@
+plugins { id 'java-library' }
+
+// A small dependency-free suite; also runnable directly with the JDK.
+tasks.register('foundationTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.FoundationTests'
+}
+tasks.named('test') { dependsOn foundationTest }
