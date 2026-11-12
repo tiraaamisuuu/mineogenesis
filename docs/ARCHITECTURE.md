@@ -1,10 +1,11 @@
-# A1 architecture and decisions
+# Foundation architecture and decisions
 
 ## Scope
 
 The canonical vision is [PROJECT_BRIEF.md](../PROJECT_BRIEF.md), currently at the
 repository root. A1 establishes experiment lifecycle and one manually controlled
-body. Learning, fitness, generations, mining and survival belong to later phases.
+body. The first evolution extension is documented separately in
+[A2_EVOLUTION.md](A2_EVOLUTION.md). Mining and survival remain later phases.
 
 ## Toolchain
 
@@ -19,7 +20,8 @@ for A1. Upgrades should be deliberate and pass the same integration tests.
 `core` is a plain Java library: experiment state, tick accounting, action and
 observation records, and an environment interface. It imports no Minecraft,
 Fabric or rendering classes. Future evolution code can depend on this boundary
-without depending on the game. No evolutionary code is implemented in A1.
+without depending on the game. The A2 extension keeps inference, reproduction,
+fitness and episode scheduling entirely inside this module.
 
 `fabric` adapts that interface to one server-owned entity, server ticks and
 operator commands. Its `client` source set contains rendering only. The mod

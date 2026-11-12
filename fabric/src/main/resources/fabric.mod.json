@@ -3,7 +3,7 @@
   "id": "mineogenesis",
   "version": "${version}",
   "name": "Mineogenesis",
-  "description": "An experimental platform for neuroevolution in Minecraft. Phase A1 foundations.",
+  "description": "An experimental platform for neuroevolution in Minecraft. Foundations and seeded neural evolution.",
   "authors": ["tiraaamisuuu"],
   "license": "MIT",
   "contact": {"sources": "https://github.com/tiraaamisuuu/mineogenesis"},
