@@ -1,0 +1,45 @@
+# Gradle and compilation outputs (at any module depth)
+.gradle/
+**/build/
+out/
+bin/
+*.class
+
+# Development worlds, downloaded assets and launch configurations
+run/
+runs/
+runClient/
+runServer/
+.fabric/
+
+# IDE and editor state
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+*.launch
+
+# Runtime logs, crash reports and temporary files
+logs/
+crash-reports/
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+hs_err_pid*
+replay_pid*
+
+# Keep the complete Gradle Wrapper and reproducible project configuration.
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat
