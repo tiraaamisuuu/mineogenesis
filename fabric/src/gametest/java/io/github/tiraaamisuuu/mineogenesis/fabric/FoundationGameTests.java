@@ -169,12 +169,18 @@ public final class FoundationGameTests implements FabricGameTest {
         ctx.runAtTick(25, () -> {
             ctx.assertTrue(agent.getX() > origin.x + 0.1, "Strafe must move left relative to yaw");
             ctx.assertTrue(agent.horizontalCollision, "Solid wall must block the body");
-            agent.setYaw(-90);
-            manager.pause();
-            ctx.assertTrue(manager.observation().orElseThrow().blockAhead().equals("minecraft:stone"),
-                    "Raycast must report the wall ahead");
-            manager.reset();
-            ctx.complete();
+            // Turn through the actuator so body and head orientation update together.
+            manager.setInput(new AgentInput(0, 0, -90, false));
+            manager.tick();
+            ctx.runAtTick(26, () -> {
+                manager.pause();
+                var observation = manager.observation().orElseThrow();
+                ctx.assertTrue(observation.blockAhead().equals("minecraft:stone"),
+                        "Raycast must report the wall ahead; got " + observation.blockAhead()
+                                + ", body yaw=" + agent.getYaw() + ", head yaw=" + agent.getHeadYaw());
+                manager.reset();
+                ctx.complete();
+            });
         });
     }
 

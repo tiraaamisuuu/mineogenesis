@@ -37,6 +37,8 @@ public final class MinecraftAgentEnvironment implements AgentEnvironment {
         }
         var candidate = new AgentEntity(AgentEntities.AGENT, world);
         candidate.refreshPositionAndAngles(origin.x, origin.y, origin.z, yaw, 0);
+        candidate.setHeadYaw(yaw);
+        candidate.setBodyYaw(yaw);
         candidate.setCustomName(Text.literal("Agent 1"));
         candidate.setCustomNameVisible(true);
         if (origin.y < world.getBottomY() || origin.y + candidate.getHeight() > world.getTopY()
