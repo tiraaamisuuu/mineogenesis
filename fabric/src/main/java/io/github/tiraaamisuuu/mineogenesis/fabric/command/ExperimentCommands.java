@@ -3,8 +3,6 @@ package io.github.tiraaamisuuu.mineogenesis.fabric.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.FloatArgumentType;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.tiraaamisuuu.mineogenesis.core.AgentInput;
 import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionConfig;
@@ -39,19 +37,8 @@ public final class ExperimentCommands {
                 .then(literal("status").executes(ctx -> execute(ctx, sessions, session ->
                         session.status())))
                 .then(literal("evolution")
-                        .then(literal("start")
-                                .executes(ctx -> startEvolution(ctx, sessions, EvolutionConfig.defaults(42)))
-                                .then(argument("seed", LongArgumentType.longArg())
-                                        .executes(ctx -> startEvolution(ctx, sessions,
-                                                EvolutionConfig.defaults(LongArgumentType.getLong(ctx, "seed"))))
-                                        .then(argument("population", IntegerArgumentType.integer(2, 256))
-                                                .then(argument("ticks", IntegerArgumentType.integer(1, 12000))
-                                                        .then(argument("generations", IntegerArgumentType.integer(1, 10000))
-                                                                .executes(ctx -> startEvolution(ctx, sessions, new EvolutionConfig(
-                                                                        LongArgumentType.getLong(ctx, "seed"),
-                                                                        IntegerArgumentType.getInteger(ctx, "population"),
-                                                                        IntegerArgumentType.getInteger(ctx, "ticks"),
-                                                                        IntegerArgumentType.getInteger(ctx, "generations"), 0.1, 0.2))))))))
+                        .then(EvolutionStartArguments.command(EvolutionConfig.defaults(42),
+                                (ctx, config) -> startEvolution(ctx, sessions, config)))
                         .then(literal("status").executes(ctx -> execute(ctx, sessions, session -> {
                             return session.evolutionStatus();
                         })))
@@ -99,6 +86,7 @@ public final class ExperimentCommands {
                                                                     return "Agent input set; use agent idle to clear it";
                                                                 })))))))));
         AcquisitionCommands.register(dispatcher, sessions);
+        TrainingCommands.register(dispatcher, sessions);
     }
 
     private static int startEvolution(CommandContext<ServerCommandSource> ctx,
@@ -107,7 +95,8 @@ public final class ExperimentCommands {
         return execute(ctx, sessions, session -> {
             session.startEvolution(ctx.getSource(), config);
             return "Evolution running: " + config.populationSize() + " candidates, " + config.episodeTicks()
-                    + " ticks each, " + config.generations() + " generations; seed=" + config.seed();
+                    + " ticks each, " + config.generations() + " generations; seed=" + config.seed()
+                    + ", mutationProbability=" + config.mutationProbability() + ", mutationSigma=" + config.mutationSigma();
         });
     }
 

@@ -124,3 +124,70 @@ a disposable world. Verify crack animation, selection, contact pickup,
 pause/resume, then stop/reset during both breaking and uncollected-drop phases.
 The new visual acquisition checks remain manual until reported by the user.
 Normal cleanup is not a persisted recovery mechanism for abrupt crashes.
+
+
+## Training storage and monitoring checks (0.4.0)
+
+Twelve workflow core tests bring the full suite to **44 tests**. They compare the
+checkpoint RNG with Java Random over uniform, bounded and cached-Gaussian draws;
+verify immutable population/history/metadata snapshots; compare every controller
+action and final results between uninterrupted and resumed training; exercise
+partial-generation boundaries/reset/progress; round-trip the binary archive;
+reject corruption, truncation, unsupported versions/topologies/fitness versions and excessive
+sizes; exercise 1,000 deterministic payload mutations with recomputed checksums; reject inconsistent counters and unsafe names/symlinks; check atomic
+replacement and temporary-file cleanup; validate CSV columns; and exercise
+coalesced background saves, explicit exports, shutdown flushing and write errors.
+Run this subset with `./gradlew :core:workflowTest`.
+
+Five additional Minecraft GameTests bring the server suite to **25 tests**:
+
+* Complete a run, queue named save/CSV/autosave, close its session, load into a new
+  session without a body, continue at the original pose, reject active/paused
+  replacement, retain history/counters, and preserve results after corrupt load.
+* Restore acquisition selection, refuse an outside replacement without overwriting
+  it, check log-axis changes again immediately before continuation, and finish
+  resumed acquisition with the original fixture intact.
+* Reject malformed world/coordinate/pitch/version/unknown metadata and verify
+  monitor progress at a loaded boundary, pause and reset; console subscription
+  is rejected.
+* Create two mock server players with embedded connections, opt each in/out
+  independently through commands, confirm idempotence, prune removed players and
+  clear subscriptions on shutdown. Existing registered-server-event coverage also
+  queues a unique named archive, waits for the background write and decodes the
+  real server-owned session's saved counters after reset.
+* Configure mutation probability/sigma through both exploration/acquisition start
+  grammars, round-trip them through a named archive and continuation, and reject
+  out-of-range/nonfinite command parameters without spawning.
+
+Manual acceptance still required: in a client, enable `monitor on`, pause/resume,
+finish training and hide the bar. Check a second observer has no bar until they
+opt in, and re-enable after respawn/reconnect. Save a named checkpoint, confirm
+storage `pending=0`, save/quit/reopen, `load <name> 2` and `continue`. Verify the
+original spawn, generation counter and selected-log rules. Open the exported CSV
+and compare its completed-generation rows with the command/log summaries.
+The headless suite does not claim client rendering or cross-restart world
+repeatability. A normal session close/flush is tested; process/power loss recovery
+and large-population throughput are not established.
+
+
+## Offline CSV analysis tests
+
+`python3 -m unittest discover -s scripts/tests -v` runs ten independent parser,
+summary and CLI tests plus a Java-export interoperability test when its fixture
+is supplied. These checks keep fitness separate from actual collection, verify
+sample standard deviations/singletons, reject duplicate exports/continuations,
+separate configurations/fixtures and partial budgets, reject nonfinite values,
+invalid versions, inconsistent counters, malformed/oversized files and exploration
+collection claims, and check parseable CLI output/nonzero failure codes.
+
+CI creates a CSV with the production Java exporter and validates it with the
+Python reader (all eleven tests, no skip). To run that contract locally after
+`./scripts/test-core.sh`:
+
+```sh
+java -cp core/build/manual-tests io.github.tiraaamisuuu.mineogenesis.core.evolution.WorkflowTests core/build/manual-tests/reference.csv
+MINEOGENESIS_TEST_EXPORT=core/build/manual-tests/reference.csv python3 -m unittest discover -s scripts/tests -v
+```
+
+The reference file is a deterministic core fixture, not Minecraft learning data.
+No pilot dataset or learned-collection success is claimed by these tests.

@@ -7,7 +7,8 @@
     "fabric-gametest": [
       "io.github.tiraaamisuuu.mineogenesis.fabric.FoundationGameTests",
       "io.github.tiraaamisuuu.mineogenesis.fabric.EvolutionGameTests",
-      "io.github.tiraaamisuuu.mineogenesis.fabric.AcquisitionGameTests"
+      "io.github.tiraaamisuuu.mineogenesis.fabric.AcquisitionGameTests",
+      "io.github.tiraaamisuuu.mineogenesis.fabric.TrainingGameTests"
     ]
   },
   "depends": {"mineogenesis": "*", "fabric-gametest-api-v1": "*"}

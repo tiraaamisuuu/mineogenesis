@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
+import net.minecraft.util.WorldSavePath;
 
 public final class Mineogenesis implements ModInitializer {
     public static final String ID = "mineogenesis";
@@ -22,7 +23,8 @@ public final class Mineogenesis implements ModInitializer {
     @Override
     public void onInitialize() {
         AgentEntities.register();
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> sessions.put(server, new ExperimentSession()));
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> sessions.put(server,
+                new ExperimentSession(server.getSavePath(WorldSavePath.ROOT).resolve("mineogenesis"))));
         ServerTickEvents.START_SERVER_TICK.register(server -> {
             ExperimentSession session = sessions.get(server);
             if (session != null) session.tick();

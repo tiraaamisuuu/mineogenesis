@@ -181,7 +181,9 @@ public final class AcquisitionGameTests implements FabricGameTest {
         genes[outputs + NetworkGenome.HIDDEN] = 0.5;
         genes[outputs + 5 * (NetworkGenome.HIDDEN + 1) + NetworkGenome.HIDDEN] = 1;
         var controller = new NeuralController(new NetworkGenome(genes));
-        for (int tick = 1; tick <= 105; tick++) {
+        // Do not sample observations on/after the cleanup tick. Minecraft's task
+        // map does not guarantee ordering between two callbacks on the same tick.
+        for (int tick = 1; tick < 100; tick++) {
             ctx.runAtTick(tick, () -> {
                 session.setManualInput(controller.decide(session.manager().observation().orElseThrow()));
                 session.tick();
