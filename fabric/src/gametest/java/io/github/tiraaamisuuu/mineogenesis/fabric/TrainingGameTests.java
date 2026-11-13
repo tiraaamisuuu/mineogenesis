@@ -21,10 +21,14 @@ import java.io.IOException;
 import java.util.*;
 
 public final class TrainingGameTests implements FabricGameTest {
+    // Register all timed tasks up front: scheduling a large batch inside a task can
+    // resize Minecraft's task map while its iterator removes the current entry.
+
     @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 80)
     public void namedSaveReloadContinueAndCsvWithRealBodies(TestContext ctx) {
         floor(ctx); Path root = temporary(); var first = new ExperimentSession(root);
         var dispatcher = dispatcher(first); var source = source(ctx);
+        var resumed = new ExperimentSession[1];
         ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution start 42 2 3 1") == 1, "Initial command must start training");
         drive(ctx, first, 1, 11);
         ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution save premature") == 0, "No save before a completed generation");
@@ -44,8 +48,12 @@ public final class TrainingGameTests implements FabricGameTest {
             ctx.assertTrue(command(commands, source, "mineogenesis evolution load named 1") == 0, "Active run cannot be replaced");
             command(commands, source, "mineogenesis pause");
             ctx.assertTrue(command(commands, source, "mineogenesis evolution load named 1") == 0, "Paused run cannot be replaced");
-            command(commands, source, "mineogenesis start"); drive(ctx, next, 13, 39);
-            ctx.runAtTick(40, () -> {
+            command(commands, source, "mineogenesis start");
+            resumed[0] = next;
+        });
+        for (int tick = 13; tick <= 39; tick++) ctx.runAtTick(tick, () -> resumed[0].tick());
+        ctx.runAtTick(40, () -> {
+                var next = resumed[0]; var commands = dispatcher(next);
                 ctx.assertTrue(next.evolution().state() == EvolutionRun.State.COMPLETED && next.evolution().history().size() == 3
                         && next.evolution().totalTicks() == 18 && bodies(ctx).isEmpty(), "Continuation adds exactly two generations");
                 next.monitor().update(next.evolution());
@@ -54,7 +62,6 @@ public final class TrainingGameTests implements FabricGameTest {
                 ctx.assertTrue(command(commands, source, "mineogenesis evolution load broken 1") == 0 && next.evolution() == previous,
                         "Corrupt load preserves existing results");
                 next.close(); delete(root); ctx.complete();
-            });
         });
     }
 
@@ -63,6 +70,7 @@ public final class TrainingGameTests implements FabricGameTest {
         floor(ctx); var target = new BlockPos(3, 3, 6);
         ctx.setBlockState(target.down(), Blocks.OAK_LOG); ctx.setBlockState(target, Blocks.OAK_LOG);
         Path root = temporary(); var session = new ExperimentSession(root); var source = source(ctx);
+        var resumed = new ExperimentSession[1];
         session.selectTarget(source, ctx.getAbsolutePos(target)); session.startAcquisition(source, new EvolutionConfig(7, 2, 2, 1, .1, .2));
         drive(ctx, session, 1, 9);
         ctx.runAtTick(10, () -> {
@@ -78,12 +86,14 @@ public final class TrainingGameTests implements FabricGameTest {
             ctx.assertTrue(command(commands, source, "mineogenesis evolution continue") == 0 && bodies(ctx).isEmpty(), "Axis changes are detected again before spawn");
             ctx.setBlockState(target, Blocks.OAK_LOG);
             ctx.assertTrue(command(commands, source, "mineogenesis evolution continue") == 1, "Retry after restoring exact fixture");
-            drive(ctx, next, 11, 25);
-            ctx.runAtTick(26, () -> {
+            resumed[0] = next;
+        });
+        for (int tick = 11; tick <= 25; tick++) ctx.runAtTick(tick, () -> resumed[0].tick());
+        ctx.runAtTick(26, () -> {
+                var next = resumed[0];
                 ctx.assertTrue(next.evolution().state() == EvolutionRun.State.COMPLETED && next.evolution().history().size() == 2, "Acquisition continues after reload");
                 ctx.assertTrue(ctx.getBlockState(target).equals(Blocks.OAK_LOG.getDefaultState()), "Fixture remains original after completion");
                 next.close(); delete(root); ctx.complete();
-            });
         });
     }
 
