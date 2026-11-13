@@ -175,6 +175,7 @@ public final class EvolutionGameTests implements FabricGameTest {
         };
         var source = source(ctx).withOutput(output);
         var dispatcher = ctx.getWorld().getServer().getCommandManager().getDispatcher();
+        String checkpointName = "event_" + java.util.UUID.randomUUID();
         ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution start 7 2 2 1") == 1,
                 "Real command registration must resolve a live server-owned session");
         ctx.runAtTick(12, () -> {
@@ -182,8 +183,22 @@ public final class EvolutionGameTests implements FabricGameTest {
             ctx.assertTrue(feedback.stream().anyMatch(line -> line.contains("Evolution COMPLETED") && line.contains("totalTicks=4")),
                     "Registered lifecycle/server tick events must complete the run: " + feedback);
             ctx.assertTrue(bodies(ctx).isEmpty(), "Automatic completion cleans up the real session's body");
+            ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution save " + checkpointName) == 1,
+                    "Real server session exposes world-scoped persistence");
+            command(dispatcher, source, "mineogenesis evolution storage");
+            ctx.assertTrue(feedback.stream().anyMatch(line -> line.contains("directory=") && line.contains("pending=")),
+                    "Storage status is connected to the registered service");
             command(dispatcher, source, "mineogenesis reset");
-            ctx.complete();
+            var directory = source.getServer().getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("mineogenesis");
+            ctx.addInstantFinalTask(() -> {
+                ctx.assertTrue(java.nio.file.Files.exists(directory.resolve(checkpointName + ".mng")), "Wait for background checkpoint write");
+                try {
+                    var archive = new io.github.tiraaamisuuu.mineogenesis.core.storage.CheckpointStore(directory).load(checkpointName);
+                    ctx.assertTrue(archive.checkpoint().totalTicks() == 4 && archive.checkpoint().config().seed() == 7,
+                            "Real registered session persisted its completed boundary after reset");
+                    java.nio.file.Files.delete(directory.resolve(checkpointName + ".mng"));
+                } catch (java.io.IOException failure) { throw new AssertionError(failure); }
+            });
         });
     }
 

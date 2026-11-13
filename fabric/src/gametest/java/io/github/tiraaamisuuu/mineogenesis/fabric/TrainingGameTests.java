@@ -126,6 +126,32 @@ public final class TrainingGameTests implements FabricGameTest {
     }
 
     private static RunArchive load(CheckpointStore store, String name) { try { return store.load(name); } catch (IOException e) { throw new AssertionError(e); } }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void monitorSubscriptionsArePerPlayerAndCleanedUp(TestContext ctx) {
+        var first = ctx.createMockCreativeServerPlayerInWorld();
+        var second = ctx.createMockCreativeServerPlayerInWorld();
+        var session = new ExperimentSession(); var commands = dispatcher(session);
+        try {
+            var a = first.getCommandSource().withLevel(2); var b = second.getCommandSource().withLevel(2);
+            ctx.assertTrue(session.monitor().observerCount() == 0, "No player is subscribed automatically");
+            ctx.assertTrue(command(commands, a, "mineogenesis monitor on") == 1, "Player can opt in through real vanilla packets");
+            command(commands, a, "mineogenesis monitor on"); command(commands, b, "mineogenesis monitor off");
+            ctx.assertTrue(session.monitor().observerCount() == 1, "Repeat opt-in is idempotent and another player cannot hide this bar");
+            command(commands, b, "mineogenesis monitor on");
+            ctx.assertTrue(session.monitor().observerCount() == 2, "Second observer opts in separately");
+            command(commands, a, "mineogenesis monitor off");
+            ctx.assertTrue(session.monitor().observerCount() == 1, "Opt-out removes only its caller");
+            command(commands, a, "mineogenesis monitor on"); first.discard(); session.monitor().tick(null);
+            ctx.assertTrue(session.monitor().observerCount() == 1, "Removed players are pruned");
+            session.close(); ctx.assertTrue(session.monitor().observerCount() == 0, "Shutdown removes every subscription");
+        } finally {
+            session.close();
+            var players = ctx.getWorld().getServer().getPlayerManager(); players.remove(first); players.remove(second);
+            first.discard(); second.discard();
+        }
+        ctx.complete();
+    }
     private static Path temporary() { try { return Files.createTempDirectory("mineogenesis-game-test-"); } catch (IOException e) { throw new AssertionError(e); } }
     private static String read(Path path) { try { return Files.readString(path); } catch (IOException e) { throw new AssertionError(e); } }
     private static void write(Path path, byte[] bytes) { try { Files.write(path, bytes); } catch (IOException e) { throw new AssertionError(e); } }

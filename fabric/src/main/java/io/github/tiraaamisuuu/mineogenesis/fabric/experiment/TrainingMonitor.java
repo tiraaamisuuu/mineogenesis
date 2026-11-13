@@ -28,5 +28,6 @@ public final class TrainingMonitor {
     }
     public String title() { return bar.getName().getString(); }
     public float progress() { return bar.getPercent(); }
+    public int observerCount() { return bar.getPlayers().size(); }
     public void close() { bar.clearPlayers(); }
 }
