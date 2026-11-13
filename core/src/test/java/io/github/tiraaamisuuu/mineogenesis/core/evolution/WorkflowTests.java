@@ -53,7 +53,8 @@ public final class WorkflowTests {
             var splitWorld = new World(); var split = new EvolutionRun(splitWorld, config(2));
             split.start(); finish(split, splitWorld);
             var resumedWorld = new World();
-            var resumed = EvolutionRun.restore(resumedWorld, split.checkpoint().orElseThrow(), 2);
+            var decoded = CheckpointCodec.decode(CheckpointCodec.encode(new RunArchive(split.checkpoint().orElseThrow(), Map.of())));
+            var resumed = EvolutionRun.restore(resumedWorld, decoded.checkpoint(), 2);
             check(!resumedWorld.present && resumed.state() == EvolutionRun.State.READY, "Restore must not spawn");
             resumed.start(); finish(resumed, resumedWorld);
             var actions = new ArrayList<>(splitWorld.actions); actions.addAll(resumedWorld.actions);
@@ -107,6 +108,18 @@ public final class WorkflowTests {
             rejects(IllegalArgumentException.class, () -> new GenerationStats(1, 0, Double.NaN, 0));
             rejects(IllegalArgumentException.class, () -> EvolutionRun.restore(new World(), c, 10000));
         });
+        test("checksummed archive mutations are either validated or safely rejected", () -> {
+            byte[] original = CheckpointCodec.encode(archive()); var random = new Random(71);
+            for (int i = 0; i < 1000; i++) {
+                byte[] candidate = original.clone(); int position = random.nextInt(candidate.length - 32);
+                candidate[position] ^= (byte) (1 << random.nextInt(8)); rehash(candidate);
+                try {
+                    var decoded = CheckpointCodec.decode(candidate);
+                    byte[] canonical = CheckpointCodec.encode(decoded);
+                    check(Arrays.equals(canonical, CheckpointCodec.encode(CheckpointCodec.decode(canonical))), "Validated data must have a stable canonical encoding");
+                } catch (IOException expected) { /* Malformed payloads must fail without unbounded allocations or unchecked errors. */ }
+            }
+        });
         test("atomic storage replaces complete files and limits names, files and symlinks", () -> {
             Path root = Files.createTempDirectory("mineogenesis-store-");
             try {
@@ -137,11 +150,15 @@ public final class WorkflowTests {
             Path root = Files.createTempDirectory("mineogenesis-writer-");
             try {
                 var store = new CheckpointStore(root); var writer = new TrainingWriter(store); var a = archive();
-                for (int i = 0; i < 100; i++) writer.autosave(a);
+                var earlier = archive(1);
+                writer.autosave(earlier);
+                for (int i = 0; i < 100; i++) writer.autosave(i % 2 == 0 ? earlier : a);
                 writer.submit("named", a, false); writer.submit("metrics", a, true);
                 rejects(IllegalArgumentException.class, () -> writer.submit("latest", a, false));
+                rejects(IllegalArgumentException.class, () -> writer.submit("Latest", a, false));
                 writer.close(); writer.close();
                 check(writer.idle() && store.names().equals(java.util.List.of("latest", "named")), "Flush must finish all accepted files");
+                check(store.load("latest").checkpoint().completedGeneration() == 2, "The newest automatic boundary must survive coalescing");
                 check(Files.readString(root.resolve("metrics.csv")).equals(CheckpointStore.csv(a)), "Export contents");
                 rejects(IllegalStateException.class, () -> writer.autosave(a));
             } finally { delete(root); }
@@ -159,7 +176,10 @@ public final class WorkflowTests {
     }
     private static EvolutionConfig config(int generations) { return new EvolutionConfig(42, 3, 5, generations, .35, .2); }
     private static RunArchive archive() {
-        var world = new World(); var run = new EvolutionRun(world, config(2)); run.start(); finish(run, world);
+        return archive(2);
+    }
+    private static RunArchive archive(int generations) {
+        var world = new World(); var run = new EvolutionRun(world, config(generations)); run.start(); finish(run, world);
         return new RunArchive(run.checkpoint().orElseThrow(), Map.of("world", "minecraft:overworld", "spawn_x", "1.5"));
     }
     private static void rehash(byte[] bytes) throws Exception {
