@@ -128,18 +128,18 @@ Normal cleanup is not a persisted recovery mechanism for abrupt crashes.
 
 ## Training storage and monitoring checks (0.4.0)
 
-Eleven workflow core tests bring the full suite to **43 tests**. They compare the
+Twelve workflow core tests bring the full suite to **44 tests**. They compare the
 checkpoint RNG with Java Random over uniform, bounded and cached-Gaussian draws;
 verify immutable population/history/metadata snapshots; compare every controller
 action and final results between uninterrupted and resumed training; exercise
 partial-generation boundaries/reset/progress; round-trip the binary archive;
-reject corruption, truncation, unsupported versions/topologies and excessive
-sizes; reject inconsistent counters and unsafe names/symlinks; check atomic
+reject corruption, truncation, unsupported versions/topologies/fitness versions and excessive
+sizes; exercise 1,000 deterministic payload mutations with recomputed checksums; reject inconsistent counters and unsafe names/symlinks; check atomic
 replacement and temporary-file cleanup; validate CSV columns; and exercise
 coalesced background saves, explicit exports, shutdown flushing and write errors.
 Run this subset with `./gradlew :core:workflowTest`.
 
-Four additional Minecraft GameTests bring the server suite to **24 tests**:
+Five additional Minecraft GameTests bring the server suite to **25 tests**:
 
 * Complete a run, queue named save/CSV/autosave, close its session, load into a new
   session without a body, continue at the original pose, reject active/paused
@@ -155,6 +155,9 @@ Four additional Minecraft GameTests bring the server suite to **24 tests**:
   clear subscriptions on shutdown. Existing registered-server-event coverage also
   queues a unique named archive, waits for the background write and decodes the
   real server-owned session's saved counters after reset.
+* Configure mutation probability/sigma through both exploration/acquisition start
+  grammars, round-trip them through a named archive and continuation, and reject
+  out-of-range/nonfinite command parameters without spawning.
 
 Manual acceptance still required: in a client, enable `monitor on`, pause/resume,
 finish training and hide the bar. Check a second observer has no bar until they

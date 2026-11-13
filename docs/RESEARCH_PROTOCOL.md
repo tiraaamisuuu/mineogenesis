@@ -32,6 +32,9 @@ in separate analysis invocations.
    observer pose, stop existing runs, then select the target.
 3. Use preselected seeds (for example 11, 22, 33, 44, 55). Keep population, episode
    budget, generations and mutation settings unchanged within a comparison.
+   Both start commands accept an optional mutation probability/sigma pair after
+   the generation count (for example `acquisition start 11 16 200 10 0.15 0.3`).
+   Change one factor at a time and preserve the same preselected seed list.
    A tiny pilot may expose bugs but cannot support a reliable learning claim.
 4. Keep the area loaded and quiet. Export at completion and retain a matching
    named checkpoint. Record aborted runs and their reasons separately; never

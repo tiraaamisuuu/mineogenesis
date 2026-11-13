@@ -210,8 +210,17 @@ champion in memory; completed-generation disk checkpoints remain available.
 
 Population range is 2..256, episode budget 1..12000 ticks, generations 1..10000.
 The default run takes about **13 minutes 20 seconds** at 20 TPS. Lower TPS
-extends wall-clock duration. Mutation probability is 0.10, Gaussian sigma 0.20,
-tournament size 3, and one elite is preserved. These settings are documented in
+extends wall-clock duration. Default mutation probability is 0.10 and Gaussian sigma is 0.20;
+tournament size is 3 and one elite is preserved. Append both mutation parameters
+to a fully configured start command to change them:
+
+```mcfunction
+/mineogenesis evolution start 42 4 60 5 0.15 0.3
+```
+
+The same optional pair works for `acquisition start`. Probability ranges from
+0 to 1, sigma from 0 to 8. Settings appear in status/logs and survive checkpoints
+and CSV export. Omitting them preserves the original defaults. These settings are documented in
 [A2_EVOLUTION.md](docs/A2_EVOLUTION.md).
 
 Root `pause`, `stop`, `reset` and `status` apply to the current mode. Root `start`
