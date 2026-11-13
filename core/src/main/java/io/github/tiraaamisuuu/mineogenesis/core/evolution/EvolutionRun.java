@@ -33,10 +33,15 @@ public final class EvolutionRun {
     }
 
     public EvolutionRun(EvolutionEnvironment environment, EvolutionConfig config, EvolutionObjective objective) {
+        this(environment, config, objective, new EvolutionPopulation(config));
+    }
+
+    private EvolutionRun(EvolutionEnvironment environment, EvolutionConfig config, EvolutionObjective objective,
+                         EvolutionPopulation population) {
         this.environment = Objects.requireNonNull(environment);
         this.config = Objects.requireNonNull(config);
         this.objective = Objects.requireNonNull(objective);
-        population = new EvolutionPopulation(config);
+        this.population = Objects.requireNonNull(population);
         scores = new double[config.populationSize()];
     }
 
@@ -56,8 +61,7 @@ public final class EvolutionRun {
         var old = checkpoint.config();
         var config = new EvolutionConfig(old.seed(), old.populationSize(), old.episodeTicks(),
                 checkpoint.completedGeneration() + additionalGenerations, old.mutationProbability(), old.mutationSigma());
-        var run = new EvolutionRun(environment, config, checkpoint.objective());
-        run.population = EvolutionPopulation.restore(config, checkpoint.population());
+        var run = new EvolutionRun(environment, config, checkpoint.objective(), EvolutionPopulation.restore(config, checkpoint.population()));
         run.generation = checkpoint.completedGeneration() + 1;
         run.totalTicks = checkpoint.totalTicks();
         run.totalSuccesses = checkpoint.totalSuccesses();
