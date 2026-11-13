@@ -124,3 +124,39 @@ a disposable world. Verify crack animation, selection, contact pickup,
 pause/resume, then stop/reset during both breaking and uncollected-drop phases.
 The new visual acquisition checks remain manual until reported by the user.
 Normal cleanup is not a persisted recovery mechanism for abrupt crashes.
+
+
+## Training storage and monitoring checks (0.4.0)
+
+Eleven workflow core tests bring the full suite to **43 tests**. They compare the
+checkpoint RNG with Java Random over uniform, bounded and cached-Gaussian draws;
+verify immutable population/history/metadata snapshots; compare every controller
+action and final results between uninterrupted and resumed training; exercise
+partial-generation boundaries/reset/progress; round-trip the binary archive;
+reject corruption, truncation, unsupported versions/topologies and excessive
+sizes; reject inconsistent counters and unsafe names/symlinks; check atomic
+replacement and temporary-file cleanup; validate CSV columns; and exercise
+coalesced background saves, explicit exports, shutdown flushing and write errors.
+Run this subset with `./gradlew :core:workflowTest`.
+
+Three additional Minecraft GameTests bring the server suite to **23 tests**:
+
+* Complete a run, queue named save/CSV/autosave, close its session, load into a new
+  session without a body, continue at the original pose, reject active/paused
+  replacement, retain history/counters, and preserve results after corrupt load.
+* Restore acquisition selection, refuse an outside replacement without overwriting
+  it, check log-axis changes again immediately before continuation, and finish
+  resumed acquisition with the original fixture intact.
+* Reject malformed world/coordinate/pitch/version/unknown metadata and verify
+  monitor progress at a loaded boundary, pause and reset; console subscription
+  is rejected.
+
+Manual acceptance still required: in a client, enable `monitor on`, pause/resume,
+finish training and hide the bar. Check a second observer has no bar until they
+opt in, and re-enable after respawn/reconnect. Save a named checkpoint, confirm
+storage `pending=0`, save/quit/reopen, `load <name> 2` and `continue`. Verify the
+original spawn, generation counter and selected-log rules. Open the exported CSV
+and compare its completed-generation rows with the command/log summaries.
+The headless suite does not claim client rendering or cross-restart world
+repeatability. A normal session close/flush is tested; process/power loss recovery
+and large-population throughput are not established.

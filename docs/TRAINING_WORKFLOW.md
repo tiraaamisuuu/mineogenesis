@@ -73,3 +73,43 @@ Minecraft checks cover placement restoration without spawning on load, explicit
 continuation, refusal to replace active runs, selected-target validation and
 preservation of outside edits, exports/autosaves, and progress through real
 registered server events. Existing A1/A2/A3 checks must remain green.
+
+
+## Implemented format and lifecycle
+
+Release 0.4.0 stores internal archive version 1 (`MNGC` magic), topology 12/8/6,
+RNG version 1, all configuration fields, objective, completed generation, best
+fitness/totals, next-population RNG state, 158 double genes per network, champion,
+ordered completed-generation records and a bounded sorted metadata map. A final
+SHA-256 digest covers the whole payload. Maximum file size is 2 MiB. This is an
+integrity check, not authentication. No 0.2.0/0.3.0 disk format existed to migrate.
+
+The adapter's fixture version 1 records dimension identifier, finite bounded
+spawn coordinates/yaw/pitch and, for acquisition, target coordinates/log axis.
+Unknown or missing fields, missing dimensions and changed/unloaded targets fail
+before replacing session state. Continuation rechecks the fixture and the entity
+adapter checks ticking chunks, collision and bounds before spawning.
+
+The writer has one daemon thread, four pending explicit requests and one pending
+automatic request. Automatic requests coalesce; accepted explicit saves/exports
+are retained. A single writer prevents file replacement races within a session.
+`latest` is reserved for autosaves. Status records the last successful write and
+last write error, with errors also logged by the server. Normal shutdown waits up
+to five seconds to drain; an error/timeout is logged and never called a successful
+flush. Atomic replacement requires filesystem support. This is not an fsync-based
+power-loss durability guarantee. Listing/loading are bounded idle administrative
+operations on the server thread; serialization/writing run in the worker.
+
+The monitor uses vanilla server boss bars, no custom payloads or client source
+changes. It updates every ten server ticks, sends only changed bar fields, prunes
+removed players, and clears subscriptions on shutdown. Observation is opt-in for
+operator players. Reconnect/respawn requires opting in again. Progress is the
+fraction of candidate evaluation slots (including bounded within-episode progress)
+over the configured total; it does not measure controller competence.
+
+The existing seed stream is preserved. Preparing the next population even at a
+configured final generation allows extension without changing any already
+evaluated actions. Checkpoint creation copies immutable references/history on the
+server thread; maximum population and generation bounds limit memory. Disk work
+runs off-thread and never reads Minecraft state. High-generation autosave cost
+and server tick performance still need a measured benchmark.

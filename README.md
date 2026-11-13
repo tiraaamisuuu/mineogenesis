@@ -3,12 +3,13 @@
 **Neuroevolution in Minecraft.** An experimental platform for studying whether
 useful behaviour can emerge through evolutionary learning.
 
-This branch implements **A1 foundations, A2 evolution and a first A3 acquisition checkpoint**:
+This branch implements **A1 foundations, A2 evolution, a first A3 acquisition checkpoint and resumable training**:
 a manually controllable humanoid plus seeded neural populations evaluated through
 one visible body at a time. Networks evolve through selection, mutation and
 elitism, using ground-exploration or selected oak-log collection objectives. See the
 [project brief](PROJECT_BRIEF.md), [foundation decisions](docs/ARCHITECTURE.md),
-the [A2 design](docs/A2_EVOLUTION.md) and [A3 design and limitations](docs/A3_BLOCK_ACQUISITION.md).
+the [A2 design](docs/A2_EVOLUTION.md), [A3 design and limitations](docs/A3_BLOCK_ACQUISITION.md)
+and [training persistence design](docs/TRAINING_WORKFLOW.md).
 
 ## Requirements
 
@@ -31,13 +32,13 @@ toolchain and Minecraft dependencies.
 ```sh
 git clone https://github.com/tiraaamisuuu/mineogenesis.git
 cd mineogenesis
-git switch phase-a3-block-acquisition
+git switch phase-a4-training-workflow
 ./gradlew build
 ./gradlew :fabric:runGameTestServer
 ```
 
 On Windows use `gradlew.bat`. The installable mod is
-`fabric/build/libs/mineogenesis-0.3.0.jar`. Do not install the sources JAR or the
+`fabric/build/libs/mineogenesis-0.4.0.jar`. Do not install the sources JAR or the
 separate core JAR; the mod includes core automatically.
 
 On NixOS, use the included development shell:
@@ -194,7 +195,7 @@ the best network stays available in memory. Watch that network for one episode:
 Replay uses the original training spawn and a fresh body. It does not change
 training scores. Stop an active run before replaying an already evaluated
 candidate. Reset, a new evolution run or server shutdown discards the old
-champion; there is no disk checkpoint yet.
+champion in memory; completed-generation disk checkpoints remain available.
 
 | Command suffix after `/mineogenesis` | Behaviour |
 | --- | --- |
@@ -219,6 +220,72 @@ starts manual mode. Manual `agent control` and `agent idle` are rejected during
 training and replay. Reset clears the whole session, including saved-in-memory
 training results. Missing/dead bodies or non-ticking chunks abort evaluation
 without breeding a partial generation.
+
+## Save, resume and inspect training
+
+Every completed generation automatically queues `latest.mng` inside the current
+world's `mineogenesis/` directory. This includes the next population, genetic
+random state, best evaluated network, configuration, history and original fixture.
+Saves do **not** contain a running entity or a partial episode. Stop/reset never
+delete disk saves. `latest` belongs to autosaving and is replaced by later runs;
+use a named save to retain a particular experiment.
+
+For a quick exploration check, start `evolution start 42 4 60 5`, optionally enable
+`monitor on`, and wait for at least generation one to finish. Then:
+
+```mcfunction
+/mineogenesis evolution save trial42
+/mineogenesis evolution export trial42
+/mineogenesis evolution storage
+/mineogenesis stop
+/mineogenesis evolution load trial42 5
+/mineogenesis evolution continue
+```
+
+Wait for storage status to show `pending=0` and the successful write before
+loading a newly queued file. The save command reports acceptance into a bounded
+background queue; disk errors appear in storage status and the server log.
+Normal world shutdown flushes accepted saves. Before generation one completes,
+there is no checkpoint to save or export. During a generation these commands use
+the **previous completed boundary**, including its champion and counters.
+
+`load trial42 5` stages five more generations after that boundary. Loading
+creates no body and changes no blocks. `continue` explicitly starts at the saved
+spawn, regardless of where the command caller stands. Stay near that area so its
+chunks tick. The total generation limit remains 10,000. You can quit/reopen the
+world between saving and loading; training never restarts automatically.
+
+| Command suffix after `/mineogenesis` | Behaviour |
+| --- | --- |
+| `evolution save <name>` | Queue the last completed boundary as `<name>.mng` |
+| `evolution load <name> <additionalGenerations>` | Validate and stage a saved population while idle |
+| `evolution continue` | Start the next generation from the staged boundary |
+| `evolution export <name>` | Queue completed-generation statistics as `<name>.csv` |
+| `evolution files` | List saved checkpoint names, including `latest` |
+| `evolution storage` | Show pending writes, last result/error and the storage directory |
+| `monitor on` / `monitor off` | Show/hide your training boss bar; operator player only |
+
+Names are 1–48 letters, digits, underscores or hyphens, beginning with a letter
+or digit. Archives have a version, network topology and SHA-256 checksum, bounded
+sizes and validated counters. Corrupt/incompatible files are rejected without
+replacing existing results. A checksum detects corruption; it is not a signature.
+The `.mng` format is internal version 1, with no old-version migration yet.
+
+CSV contains generation best/mean/worst fitness, successful candidates, population,
+success rate, per-candidate tick budget, actual generation/cumulative ticks,
+cumulative successes, seed and objective. It contains only completed generations;
+replay and partial episodes do not change it. The opt-in vanilla boss bar updates
+at most twice per second, shows generation/candidate/best/collections, freezes
+progress while paused and fills on completion. Enable it again after respawning
+or reconnecting. Its percentage measures evaluation slots, not learning quality.
+
+Acquisition saves require the same dimension, loaded spawn and exact original
+selected oak-log state, including axis, at load and again before continuation.
+They never recreate a missing log or overwrite an outside edit. Restore the
+fixture yourself if it changed. Checkpoints are **not world backups** and do not
+recover terrain after an abrupt crash. Genetic continuation is checked exactly
+in a deterministic core simulation; Minecraft world outcomes remain affected by
+time, other actors and physics. Reliable learned collection is still unproven.
 
 ## Try manual control
 
@@ -270,7 +337,7 @@ vanilla living-entity jump timing. No input means no intentional movement.
 ## Development layout
 
 * `core/`: plain Java lifecycle, actuator/observation records, neural inference,
-  genomes, reproduction, fitness and episode scheduling. No Minecraft imports.
+  genomes, reproduction, fitness, episode scheduling and validated storage. No Minecraft imports.
 * `fabric/src/main/`: server simulation, entity type, lifecycle and commands.
 * `fabric/src/client/`: humanoid renderer using Minecraft's bundled Steve skin.
 * `fabric/src/gametest/`: isolated test mod; excluded from release JARs.
@@ -291,8 +358,8 @@ crafting or survival mechanics. Movement uses vanilla living-entity physics,
 which is not a claim of exact player-physics equivalence.
 
 Pause affects this body only. Reset does not restore terrain, weather, time or
-world randomness. No experiment persistence, configured arena, performance
-benchmark or support guarantee for large populations is included yet. Agents
+world randomness. Generation-boundary checkpoints preserve training state, not the world. No configured
+arena, performance benchmark or support guarantee for large populations is included yet. Agents
 remain visible only within normal chunk/entity tracking distances.
 
 The seed reproduces network initialization, selection and mutation, not an
@@ -303,8 +370,8 @@ networks receive local velocities, ground/collision/block-ahead flags and their
 previous movement inputs, plus local target-in-view, mining progress, inventory
 count and own pitch. There are no target coordinates in network inputs. The
 model is now a fixed 12-8-6 tanh network (158 weights and biases); seeds do not
-replay the old 0.2.0 topology. Checkpoints, controlled arenas, simultaneous agent
-populations and generalised block acquisition remain later milestones.
+replay the old 0.2.0 topology. Controlled arenas, simultaneous agent populations
+and generalised block acquisition remain later milestones.
 
 ## License
 
