@@ -1,23 +1,44 @@
 package io.github.tiraaamisuuu.mineogenesis.core.evolution;
 
 import java.util.Objects;
-import java.util.Random;
+import java.util.List;
 
 /** Fixed-size population; maximises finite fitness using one elite and tournaments of 3. */
 public final class EvolutionPopulation {
     private final EvolutionConfig config;
-    private final Random random;
+    private final CheckpointRandom random;
     private NetworkGenome[] genomes;
 
     public EvolutionPopulation(EvolutionConfig config) {
         this.config = Objects.requireNonNull(config);
-        random = new Random(config.seed());
+        random = new CheckpointRandom(config.seed());
         genomes = new NetworkGenome[config.populationSize()];
         for (int i = 0; i < genomes.length; i++) genomes[i] = NetworkGenome.random(random);
     }
 
     public int size() { return genomes.length; }
     public NetworkGenome genome(int index) { return genomes[index]; }
+
+    public record Snapshot(List<NetworkGenome> genomes, CheckpointRandom.State random) {
+        public Snapshot {
+            genomes = List.copyOf(genomes);
+            Objects.requireNonNull(random);
+            if (genomes.size() < 2 || genomes.size() > 256) throw new IllegalArgumentException("Invalid snapshot population size");
+        }
+    }
+
+    private EvolutionPopulation(EvolutionConfig config, Snapshot snapshot) {
+        this.config = Objects.requireNonNull(config);
+        if (snapshot.genomes().size() != config.populationSize()) throw new IllegalArgumentException("Snapshot population mismatch");
+        random = CheckpointRandom.restore(snapshot.random());
+        genomes = snapshot.genomes().toArray(NetworkGenome[]::new);
+    }
+
+    public static EvolutionPopulation restore(EvolutionConfig config, Snapshot snapshot) {
+        return new EvolutionPopulation(config, snapshot);
+    }
+
+    public Snapshot snapshot() { return new Snapshot(java.util.Arrays.asList(genomes), random.snapshot()); }
 
     public int bestIndex(double[] fitness) {
         validate(fitness);

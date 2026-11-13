@@ -21,3 +21,10 @@ tasks.register('acquisitionTest', JavaExec) {
     mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.acquisition.AcquisitionTests'
 }
 tasks.named('test') { dependsOn acquisitionTest }
+
+tasks.register('workflowTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.tiraaamisuuu.mineogenesis.core.evolution.WorkflowTests'
+}
+tasks.named('test') { dependsOn workflowTest }

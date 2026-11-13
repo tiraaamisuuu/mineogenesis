@@ -7,3 +7,4 @@ javac --release 21 -d core/build/manual-tests @core/build/manual-tests/sources.t
 java -cp core/build/manual-tests io.github.tiraaamisuuu.mineogenesis.core.FoundationTests
 java -cp core/build/manual-tests io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionTests
 java -cp core/build/manual-tests io.github.tiraaamisuuu.mineogenesis.core.acquisition.AcquisitionTests
+java -cp core/build/manual-tests io.github.tiraaamisuuu.mineogenesis.core.evolution.WorkflowTests

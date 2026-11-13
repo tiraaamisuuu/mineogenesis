@@ -2,6 +2,8 @@ package io.github.tiraaamisuuu.mineogenesis.core.evolution;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Sequential evaluation; tick() is called BEFORE each world physics step. */
 public final class EvolutionRun {
@@ -23,6 +25,8 @@ public final class EvolutionRun {
     private String failureReason = "";
     private int generationSuccesses;
     private long totalSuccesses;
+    private final List<GenerationRecord> history = new ArrayList<>();
+    private TrainingCheckpoint checkpoint;
 
     public EvolutionRun(EvolutionEnvironment environment, EvolutionConfig config) {
         this(environment, config, EvolutionObjective.EXPLORATION);
@@ -42,6 +46,27 @@ public final class EvolutionRun {
             startEpisode();
             state = State.RUNNING;
         } catch (RuntimeException failure) { abort(failure); throw failure; }
+    }
+
+    /** Restores training state only; no body is spawned until start() is explicitly called. */
+    public static EvolutionRun restore(EvolutionEnvironment environment, TrainingCheckpoint checkpoint, int additionalGenerations) {
+        if (additionalGenerations < 1 || additionalGenerations > 10000 - checkpoint.completedGeneration()) {
+            throw new IllegalArgumentException("Additional generations must keep the total within 10000");
+        }
+        var old = checkpoint.config();
+        var config = new EvolutionConfig(old.seed(), old.populationSize(), old.episodeTicks(),
+                checkpoint.completedGeneration() + additionalGenerations, old.mutationProbability(), old.mutationSigma());
+        var run = new EvolutionRun(environment, config, checkpoint.objective());
+        run.population = EvolutionPopulation.restore(config, checkpoint.population());
+        run.generation = checkpoint.completedGeneration() + 1;
+        run.totalTicks = checkpoint.totalTicks();
+        run.totalSuccesses = checkpoint.totalSuccesses();
+        run.champion = checkpoint.champion();
+        run.bestFitness = checkpoint.bestFitness();
+        run.history.addAll(checkpoint.history());
+        run.lastStats = checkpoint.history().getLast().statistics();
+        run.checkpoint = checkpoint;
+        return run;
     }
 
     public void tick() {
@@ -100,6 +125,8 @@ public final class EvolutionRun {
         generationSuccesses = 0;
         totalSuccesses = 0;
         failureReason = "";
+        history.clear();
+        checkpoint = null;
         state = State.READY;
     }
 
@@ -127,11 +154,15 @@ public final class EvolutionRun {
             double sum = 0, min = Double.POSITIVE_INFINITY, max = Double.NEGATIVE_INFINITY;
             for (double value : scores) { sum += value; min = Math.min(min, value); max = Math.max(max, value); }
             lastStats = new GenerationStats(generation, max, sum / scores.length, min, generationSuccesses);
+            history.add(new GenerationRecord(lastStats, totalTicks, totalSuccesses));
+            // Prepare the next population even at a run's configured end, so continuation is exact.
+            population.breed(scores);
+            checkpoint = new TrainingCheckpoint(config, objective, generation, population.snapshot(), champion,
+                    bestFitness, totalTicks, totalSuccesses, history);
             if (generation == config.generations()) {
                 state = State.COMPLETED;
                 return;
             }
-            population.breed(scores);
             generation++;
             generationSuccesses = 0;
             index = 0;
@@ -164,4 +195,12 @@ public final class EvolutionRun {
     public Optional<GenerationStats> lastStats() { return Optional.ofNullable(lastStats); }
     public Optional<NetworkGenome> champion() { return Optional.ofNullable(champion); }
     public String failureReason() { return failureReason; }
+    public Optional<TrainingCheckpoint> checkpoint() { return Optional.ofNullable(checkpoint); }
+    public List<GenerationRecord> history() { return List.copyOf(history); }
+    public double progressFraction() {
+        if (state == State.COMPLETED) return 1;
+        double candidates = (generation - 1L) * config.populationSize() + index
+                + (double) episodeTicks / config.episodeTicks();
+        return Math.clamp(candidates / ((long) config.generations() * config.populationSize()), 0, 1);
+    }
 }
