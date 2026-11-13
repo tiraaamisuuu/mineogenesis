@@ -16,6 +16,11 @@ import io.github.tiraaamisuuu.mineogenesis.fabric.agent.MinecraftAgentEnvironmen
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
+import io.github.tiraaamisuuu.mineogenesis.core.storage.CheckpointStore;
+import io.github.tiraaamisuuu.mineogenesis.core.storage.RunArchive;
+import io.github.tiraaamisuuu.mineogenesis.core.storage.TrainingWriter;
+import java.io.IOException;
+import java.nio.file.Path;
 
 /** Server-owned integration object with one active world per server instance. */
 public final class ExperimentSession {
@@ -28,6 +33,60 @@ public final class ExperimentSession {
     private SpawnPoint trainingSpawn;
     private AcquisitionTarget selectedTarget;
     private AcquisitionTarget trainingTarget;
+    private final CheckpointStore store;
+    private final TrainingWriter writer;
+    private final TrainingMonitor monitor = new TrainingMonitor();
+    private boolean loadedContinuation;
+    private String reportedStorageError = "";
+
+    public ExperimentSession() { store = null; writer = null; }
+    public ExperimentSession(Path directory) { store = new CheckpointStore(directory); writer = new TrainingWriter(store); }
+    public TrainingMonitor monitor() { return monitor; }
+    public EvolutionRun evolutionOrNull() { return evolution; }
+
+    private void requireStorage() {
+        if (store == null) throw new IllegalStateException("Training storage is unavailable for this session");
+    }
+    private TrainingPlacement placement() {
+        if (trainingSpawn == null) throw new IllegalStateException("No training placement exists");
+        return new TrainingPlacement(trainingSpawn.world(), trainingSpawn.position(), trainingSpawn.yaw(), trainingSpawn.pitch(), trainingTarget);
+    }
+    private RunArchive archive() {
+        return new RunArchive(evolution().checkpoint().orElseThrow(() -> new IllegalStateException(
+                "No completed generation to save yet; wait for generation one to finish")), placement().metadata());
+    }
+    public void saveTraining(String name, boolean csv) {
+        requireStorage(); writer.submit(name, archive(), csv);
+    }
+    public void loadTraining(ServerCommandSource source, String name, int additionalGenerations) {
+        requireIdle(); requireStorage();
+        try {
+            var archive = store.load(name);
+            var point = TrainingPlacement.decode(source.getServer(), archive);
+            var restored = EvolutionRun.restore(environment, archive.checkpoint(), additionalGenerations);
+            // Commit replacement only after the entire file and fixture have validated.
+            trainingSpawn = new SpawnPoint(point.world(), point.position(), point.yaw(), point.pitch());
+            trainingTarget = selectedTarget = point.target();
+            evolution = restored; evolutionMode = true; replayController = null;
+            reportedGeneration = archive.checkpoint().completedGeneration(); loadedContinuation = true;
+            monitor.update(evolution);
+        } catch (IOException failure) { throw new IllegalStateException("Cannot load checkpoint: " + failure.getMessage(), failure); }
+    }
+    public void continueTraining() {
+        requireIdle();
+        if (!loadedContinuation || evolution().state() != EvolutionRun.State.READY) {
+            throw new IllegalStateException("Load a checkpoint before using evolution continue");
+        }
+        placement().verify(); trainingSpawn.configure(environment); environment.configureAcquisition(trainingTarget);
+        evolution.start(); evolutionMode = true; loadedContinuation = false; monitor.update(evolution);
+    }
+    public String savedTrainingNames() {
+        requireStorage();
+        try { return "Saved checkpoints: " + String.join(", ", store.names()); }
+        catch (IOException failure) { throw new IllegalStateException("Cannot list checkpoints: " + failure.getMessage(), failure); }
+    }
+    public String storageStatus() { requireStorage(); return writer.status() + "; directory=" + store.directory(); }
+    public boolean storageIdle() { return writer == null || writer.idle(); }
 
     private record SpawnPoint(ServerWorld world, Vec3d position, float yaw, float pitch) {
         void configure(MinecraftAgentEnvironment environment) { environment.configure(world, position, yaw, pitch); }
@@ -80,6 +139,7 @@ public final class ExperimentSession {
         evolution = new EvolutionRun(environment, config, objective);
         evolutionMode = true;
         reportedGeneration = 0;
+        loadedContinuation = false;
         evolution.start();
         Mineogenesis.LOGGER.info("Evolution started: objective={}, seed={}, population={}, ticks={}, generations={}",
                 objective, config.seed(), config.populationSize(), config.episodeTicks(), config.generations());
@@ -175,6 +235,7 @@ public final class ExperimentSession {
         manager.reset();
         reportedGeneration = 0;
         replayController = null;
+        loadedContinuation = false;
     }
 
     public void setManualInput(AgentInput input) {
@@ -220,6 +281,13 @@ public final class ExperimentSession {
     }
 
     public void tick() {
+        monitor.tick(evolution);
+        if (writer != null) {
+            String status = writer.status(); int errorIndex = status.indexOf("lastError=");
+            if (errorIndex >= 0 && !status.substring(errorIndex).equals(reportedStorageError)) {
+                reportedStorageError = status.substring(errorIndex); Mineogenesis.LOGGER.error("Training storage: {}", reportedStorageError);
+            }
+        }
         if (evolutionMode && evolution != null) {
             var before = evolution.state();
             try { evolution.tick(); }
@@ -227,6 +295,7 @@ public final class ExperimentSession {
             evolution.lastStats().ifPresent(stats -> {
                 if (stats.generation() > reportedGeneration) {
                     reportedGeneration = stats.generation();
+                    if (writer != null) writer.autosave(archive());
                     Mineogenesis.LOGGER.info("Generation {}: best={}, mean={}, worst={}, successes={}, bestEver={}",
                             stats.generation(), stats.bestFitness(), stats.meanFitness(), stats.worstFitness(),
                             stats.successfulCandidates(), evolution.bestFitness());
@@ -264,5 +333,12 @@ public final class ExperimentSession {
         manager.tick();
     }
 
-    public void close() { reset(); }
+    public void close() {
+        try { reset(); }
+        finally {
+            monitor.close();
+            if (writer != null) try { writer.close(); }
+            catch (IOException failure) { Mineogenesis.LOGGER.error("Could not flush training storage", failure); }
+        }
+    }
 }

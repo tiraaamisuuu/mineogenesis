@@ -99,6 +99,7 @@ public final class ExperimentCommands {
                                                                     return "Agent input set; use agent idle to clear it";
                                                                 })))))))));
         AcquisitionCommands.register(dispatcher, sessions);
+        TrainingCommands.register(dispatcher, sessions);
     }
 
     private static int startEvolution(CommandContext<ServerCommandSource> ctx,
