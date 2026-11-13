@@ -127,6 +127,37 @@ public final class TrainingGameTests implements FabricGameTest {
 
     private static RunArchive load(CheckpointStore store, String name) { try { return store.load(name); } catch (IOException e) { throw new AssertionError(e); } }
 
+    @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 30)
+    public void mutationSettingsAreConfigurableBoundedAndPreservedBySaves(TestContext ctx) {
+        floor(ctx); var source = source(ctx); Path root = temporary();
+        var session = new ExperimentSession(root); var commands = dispatcher(session);
+        ctx.assertTrue(command(commands, source, "mineogenesis evolution start 9 2 2 1 0.35 0.7") == 1, "Configured exploration grammar");
+        ctx.assertTrue(session.evolution().config().mutationProbability() == .35 && session.evolution().config().mutationSigma() == .7,
+                "Configured values reach the core");
+        drive(ctx, session, 1, 9);
+        ctx.runAtTick(10, () -> {
+            session.saveTraining("configured", false); session.close();
+            var next = new ExperimentSession(root); var dispatcher = dispatcher(next);
+            next.loadTraining(source, "configured", 1);
+            ctx.assertTrue(next.evolution().config().mutationProbability() == .35 && next.evolution().config().mutationSigma() == .7,
+                    "Archive preserves settings during continuation");
+            next.continueTraining(); next.stop();
+            var target = new BlockPos(3, 3, 6); ctx.setBlockState(target, Blocks.OAK_LOG);
+            next.selectTarget(source, ctx.getAbsolutePos(target));
+            ctx.assertTrue(command(dispatcher, source, "mineogenesis acquisition start 9 2 2 1 0.6 0.9") == 1, "Configured acquisition grammar");
+            ctx.assertTrue(next.evolution().config().mutationProbability() == .6 && next.evolution().config().mutationSigma() == .9,
+                    "Acquisition uses the same bounded settings");
+            next.stop();
+            for (String invalid : List.of("mineogenesis evolution start 9 2 2 1 -0.1 0.2", "mineogenesis acquisition start 9 2 2 1 0.1 9",
+                    "mineogenesis evolution start 9 2 2 1 NaN 0.2")) {
+                boolean rejected = false;
+                try { dispatcher.execute(invalid, source); } catch (CommandSyntaxException expected) { rejected = true; }
+                ctx.assertTrue(rejected && bodies(ctx).isEmpty(), "Invalid mutation settings cannot start a body");
+            }
+            next.close(); delete(root); ctx.complete();
+        });
+    }
+
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void monitorSubscriptionsArePerPlayerAndCleanedUp(TestContext ctx) {
         var first = ctx.createMockCreativeServerPlayerInWorld();

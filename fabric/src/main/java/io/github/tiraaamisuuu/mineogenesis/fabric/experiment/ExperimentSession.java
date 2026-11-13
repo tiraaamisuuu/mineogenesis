@@ -141,8 +141,8 @@ public final class ExperimentSession {
         reportedGeneration = 0;
         loadedContinuation = false;
         evolution.start();
-        Mineogenesis.LOGGER.info("Evolution started: objective={}, seed={}, population={}, ticks={}, generations={}",
-                objective, config.seed(), config.populationSize(), config.episodeTicks(), config.generations());
+        Mineogenesis.LOGGER.info("Evolution started: objective={}, seed={}, population={}, ticks={}, generations={}, mutationProbability={}, mutationSigma={}",
+                objective, config.seed(), config.populationSize(), config.episodeTicks(), config.generations(), config.mutationProbability(), config.mutationSigma());
     }
 
     public boolean pause() { return evolutionMode ? evolution().pause() : manager.pause(); }
@@ -257,6 +257,7 @@ public final class ExperimentSession {
                 ", lastGen=%d best=%.1f mean=%.2f worst=%.1f successes=%d/%d", stats.generation(), stats.bestFitness(),
                 stats.meanFitness(), stats.worstFitness(), stats.successfulCandidates(), run.config().populationSize())).orElse("");
         return "Evolution " + run.state() + ", objective=" + run.objective() + ", seed=" + run.config().seed()
+                + ", mutationProbability=" + run.config().mutationProbability() + ", mutationSigma=" + run.config().mutationSigma()
                 + ", generation=" + run.generation() + "/" + run.config().generations()
                 + ", agent=" + run.individual() + "/" + run.config().populationSize()
                 + ", episodeTicks=" + run.episodeTicks() + "/" + run.config().episodeTicks()

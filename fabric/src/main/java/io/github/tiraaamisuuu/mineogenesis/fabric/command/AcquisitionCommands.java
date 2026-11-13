@@ -1,8 +1,6 @@
 package io.github.tiraaamisuuu.mineogenesis.fabric.command;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import io.github.tiraaamisuuu.mineogenesis.core.evolution.EvolutionConfig;
 import io.github.tiraaamisuuu.mineogenesis.fabric.experiment.ExperimentSession;
@@ -36,17 +34,8 @@ public final class AcquisitionCommands {
                         .then(literal("manual").executes(ctx -> execute(ctx, sessions, session -> {
                             session.startManualAcquisition(ctx.getSource()); return "Manual acquisition active; only the selected log can be mined";
                         })))
-                        .then(literal("start").executes(ctx -> start(ctx, sessions, defaults(42)))
-                                .then(argument("seed", LongArgumentType.longArg()).executes(ctx -> start(ctx, sessions,
-                                                defaults(LongArgumentType.getLong(ctx, "seed"))))
-                                        .then(argument("population", IntegerArgumentType.integer(2, 256))
-                                                .then(argument("ticks", IntegerArgumentType.integer(1, 12000))
-                                                        .then(argument("generations", IntegerArgumentType.integer(1, 10000))
-                                                                .executes(ctx -> start(ctx, sessions, new EvolutionConfig(
-                                                                        LongArgumentType.getLong(ctx, "seed"),
-                                                                        IntegerArgumentType.getInteger(ctx, "population"),
-                                                                        IntegerArgumentType.getInteger(ctx, "ticks"),
-                                                                        IntegerArgumentType.getInteger(ctx, "generations"), 0.1, 0.2))))))))));
+                        .then(EvolutionStartArguments.command(defaults(42), (ctx, config) -> start(ctx, sessions, config)))));
+
     }
 
     private static EvolutionConfig defaults(long seed) { return new EvolutionConfig(seed, 16, 200, 10, 0.1, 0.2); }
@@ -56,7 +45,8 @@ public final class AcquisitionCommands {
         return execute(ctx, sessions, session -> {
             session.startAcquisition(ctx.getSource(), config);
             return "Oak-log acquisition running: " + config.populationSize() + " candidates, " + config.episodeTicks()
-                    + " ticks maximum, " + config.generations() + " generations; seed=" + config.seed();
+                    + " ticks maximum, " + config.generations() + " generations; seed=" + config.seed()
+                    + ", mutationProbability=" + config.mutationProbability() + ", mutationSigma=" + config.mutationSigma();
         });
     }
 }
