@@ -25,10 +25,11 @@ public final class TrainingGameTests implements FabricGameTest {
     public void namedSaveReloadContinueAndCsvWithRealBodies(TestContext ctx) {
         floor(ctx); Path root = temporary(); var first = new ExperimentSession(root);
         var dispatcher = dispatcher(first); var source = source(ctx);
-        command(dispatcher, source, "mineogenesis evolution start 42 2 3 1"); drive(ctx, first, 1, 11);
+        ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution start 42 2 3 1") == 1, "Initial command must start training");
+        drive(ctx, first, 1, 11);
         ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution save premature") == 0, "No save before a completed generation");
         ctx.runAtTick(12, () -> {
-            ctx.assertTrue(first.evolution().state() == EvolutionRun.State.COMPLETED, "Initial training completes");
+            ctx.assertTrue(first.evolution().state() == EvolutionRun.State.COMPLETED, "Initial training completes: " + first.evolutionStatus());
             ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution save named") == 1, "Named save parses");
             ctx.assertTrue(command(dispatcher, source, "mineogenesis evolution export metrics") == 1, "CSV export parses");
             first.close(); // Normal lifecycle flush must finish both explicit files and the autosave.
@@ -93,7 +94,7 @@ public final class TrainingGameTests implements FabricGameTest {
         ctx.runAtTick(9, () -> {
             session.saveTraining("valid", false); session.close();
             var store = new CheckpointStore(root); var archive = load(store, "valid");
-            for (Map<String, String> change : List.of(Map.of("world", "missing:dimension"), Map.of("spawn_x", "NaN"),
+            for (Map<String, String> change : List.of(Map.of("world", "missing:dimension"), Map.of("world", "bad identifier!"), Map.of("spawn_x", "NaN"),
                     Map.of("pitch", "91"), Map.of("fixture_version", "99"), Map.of("extra", "unsupported"))) {
                 var metadata = new HashMap<>(archive.metadata()); metadata.putAll(change);
                 boolean rejected = false;

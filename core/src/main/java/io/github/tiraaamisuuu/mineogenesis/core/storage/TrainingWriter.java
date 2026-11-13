@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /** One writer, at most four explicit requests and one coalesced automatic snapshot. */
 public final class TrainingWriter implements AutoCloseable {
-    private record Request(String name, RunArchive archive, boolean csv, boolean automatic) { }
+    private record Request(String name, RunArchive archive, boolean csv) { }
     private final CheckpointStore store;
     private final ArrayDeque<Request> explicit = new ArrayDeque<>();
     private Request automatic;
@@ -21,15 +21,15 @@ public final class TrainingWriter implements AutoCloseable {
     }
     public synchronized void autosave(RunArchive archive) {
         if (closing) throw new IllegalStateException("Training writer is closed");
-        automatic = new Request("latest", Objects.requireNonNull(archive), false, true);
+        automatic = new Request("latest", Objects.requireNonNull(archive), false);
         notifyAll();
     }
     public synchronized void submit(String name, RunArchive archive, boolean csv) {
         CheckpointStore.validateName(name); Objects.requireNonNull(archive);
-        if (name.equals("latest")) throw new IllegalArgumentException("The name latest is reserved for autosaves");
+        if (name.equalsIgnoreCase("latest")) throw new IllegalArgumentException("The name latest is reserved for autosaves");
         if (closing) throw new IllegalStateException("Training writer is closed");
         if (explicit.size() >= 4) throw new IllegalStateException("Training writer is busy; try again after pending writes finish");
-        explicit.addLast(new Request(name, archive, csv, false)); notifyAll();
+        explicit.addLast(new Request(name, archive, csv)); notifyAll();
     }
     private void work() {
         while (true) {

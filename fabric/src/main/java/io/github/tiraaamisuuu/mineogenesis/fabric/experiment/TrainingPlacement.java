@@ -52,7 +52,9 @@ public record TrainingPlacement(ServerWorld world, Vec3d position, float yaw, fl
         boolean acquisition = archive.checkpoint().objective() == EvolutionObjective.OAK_LOG_ACQUISITION;
         if (acquisition) keys.addAll(TARGET);
         if (!keys.equals(m.keySet()) || !"1".equals(m.get("fixture_version"))) throw new IllegalArgumentException("Unsupported fixture metadata");
-        var world = server.getWorld(RegistryKey.of(RegistryKeys.WORLD, Identifier.of(m.get("world"))));
+        var identifier = Identifier.tryParse(m.get("world"));
+        if (identifier == null) throw new IllegalArgumentException("Invalid saved dimension identifier");
+        var world = server.getWorld(RegistryKey.of(RegistryKeys.WORLD, identifier));
         if (world == null) throw new IllegalArgumentException("Saved training dimension is unavailable");
         AcquisitionTarget target = null;
         if (acquisition) {
