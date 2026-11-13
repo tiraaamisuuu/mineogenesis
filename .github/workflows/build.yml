@@ -25,6 +25,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build client and server sources; run core tests
         run: ./gradlew --no-daemon build
+      - name: Verify run analysis tooling
+        run: python3 -m unittest discover -s scripts/tests -v
       - name: Verify installable mod packaging
         run: python3 scripts/check-mod-jar.py fabric/build/libs/mineogenesis-0.4.0.jar
       - name: Run Minecraft server integration tests

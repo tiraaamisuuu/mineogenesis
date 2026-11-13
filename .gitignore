@@ -38,6 +38,10 @@ Thumbs.db
 hs_err_pid*
 replay_pid*
 
+# Python analysis tooling bytecode
+__pycache__/
+*.py[cod]
+
 # Keep the complete Gradle Wrapper and reproducible project configuration.
 !gradle/wrapper/gradle-wrapper.jar
 !gradle/wrapper/gradle-wrapper.properties
