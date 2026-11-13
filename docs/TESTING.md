@@ -139,7 +139,7 @@ replacement and temporary-file cleanup; validate CSV columns; and exercise
 coalesced background saves, explicit exports, shutdown flushing and write errors.
 Run this subset with `./gradlew :core:workflowTest`.
 
-Three additional Minecraft GameTests bring the server suite to **23 tests**:
+Four additional Minecraft GameTests bring the server suite to **24 tests**:
 
 * Complete a run, queue named save/CSV/autosave, close its session, load into a new
   session without a body, continue at the original pose, reject active/paused
@@ -150,6 +150,11 @@ Three additional Minecraft GameTests bring the server suite to **23 tests**:
 * Reject malformed world/coordinate/pitch/version/unknown metadata and verify
   monitor progress at a loaded boundary, pause and reset; console subscription
   is rejected.
+* Create two mock server players with embedded connections, opt each in/out
+  independently through commands, confirm idempotence, prune removed players and
+  clear subscriptions on shutdown. Existing registered-server-event coverage also
+  queues a unique named archive, waits for the background write and decodes the
+  real server-owned session's saved counters after reset.
 
 Manual acceptance still required: in a client, enable `monitor on`, pause/resume,
 finish training and hide the bar. Check a second observer has no bar until they
@@ -160,3 +165,26 @@ and compare its completed-generation rows with the command/log summaries.
 The headless suite does not claim client rendering or cross-restart world
 repeatability. A normal session close/flush is tested; process/power loss recovery
 and large-population throughput are not established.
+
+
+## Offline CSV analysis tests
+
+`python3 -m unittest discover -s scripts/tests -v` runs ten independent parser,
+summary and CLI tests plus a Java-export interoperability test when its fixture
+is supplied. These checks keep fitness separate from actual collection, verify
+sample standard deviations/singletons, reject duplicate exports/continuations,
+separate configurations/fixtures and partial budgets, reject nonfinite values,
+invalid versions, inconsistent counters, malformed/oversized files and exploration
+collection claims, and check parseable CLI output/nonzero failure codes.
+
+CI creates a CSV with the production Java exporter and validates it with the
+Python reader (all eleven tests, no skip). To run that contract locally after
+`./scripts/test-core.sh`:
+
+```sh
+java -cp core/build/manual-tests io.github.tiraaamisuuu.mineogenesis.core.evolution.WorkflowTests core/build/manual-tests/reference.csv
+MINEOGENESIS_TEST_EXPORT=core/build/manual-tests/reference.csv python3 -m unittest discover -s scripts/tests -v
+```
+
+The reference file is a deterministic core fixture, not Minecraft learning data.
+No pilot dataset or learned-collection success is claimed by these tests.

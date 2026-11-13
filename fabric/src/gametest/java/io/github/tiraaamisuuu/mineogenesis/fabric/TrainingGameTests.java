@@ -53,15 +53,15 @@ public final class TrainingGameTests implements FabricGameTest {
         });
         for (int tick = 13; tick <= 39; tick++) ctx.runAtTick(tick, () -> resumed[0].tick());
         ctx.runAtTick(40, () -> {
-                var next = resumed[0]; var commands = dispatcher(next);
-                ctx.assertTrue(next.evolution().state() == EvolutionRun.State.COMPLETED && next.evolution().history().size() == 3
-                        && next.evolution().totalTicks() == 18 && bodies(ctx).isEmpty(), "Continuation adds exactly two generations");
-                next.monitor().update(next.evolution());
-                ctx.assertTrue(next.monitor().progress() == 1 && next.monitor().title().contains("COMPLETED"), "Monitor shows completion");
-                var previous = next.evolution(); write(root.resolve("broken.mng"), new byte[]{1, 2, 3});
-                ctx.assertTrue(command(commands, source, "mineogenesis evolution load broken 1") == 0 && next.evolution() == previous,
-                        "Corrupt load preserves existing results");
-                next.close(); delete(root); ctx.complete();
+            var next = resumed[0]; var commands = dispatcher(next);
+            ctx.assertTrue(next.evolution().state() == EvolutionRun.State.COMPLETED && next.evolution().history().size() == 3
+                    && next.evolution().totalTicks() == 18 && bodies(ctx).isEmpty(), "Continuation adds exactly two generations");
+            next.monitor().update(next.evolution());
+            ctx.assertTrue(next.monitor().progress() == 1 && next.monitor().title().contains("COMPLETED"), "Monitor shows completion");
+            var previous = next.evolution(); write(root.resolve("broken.mng"), new byte[]{1, 2, 3});
+            ctx.assertTrue(command(commands, source, "mineogenesis evolution load broken 1") == 0 && next.evolution() == previous,
+                    "Corrupt load preserves existing results");
+            next.close(); delete(root); ctx.complete();
         });
     }
 
@@ -90,10 +90,10 @@ public final class TrainingGameTests implements FabricGameTest {
         });
         for (int tick = 11; tick <= 25; tick++) ctx.runAtTick(tick, () -> resumed[0].tick());
         ctx.runAtTick(26, () -> {
-                var next = resumed[0];
-                ctx.assertTrue(next.evolution().state() == EvolutionRun.State.COMPLETED && next.evolution().history().size() == 2, "Acquisition continues after reload");
-                ctx.assertTrue(ctx.getBlockState(target).equals(Blocks.OAK_LOG.getDefaultState()), "Fixture remains original after completion");
-                next.close(); delete(root); ctx.complete();
+            var next = resumed[0];
+            ctx.assertTrue(next.evolution().state() == EvolutionRun.State.COMPLETED && next.evolution().history().size() == 2, "Acquisition continues after reload");
+            ctx.assertTrue(ctx.getBlockState(target).equals(Blocks.OAK_LOG.getDefaultState()), "Fixture remains original after completion");
+            next.close(); delete(root); ctx.complete();
         });
     }
 

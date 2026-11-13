@@ -78,7 +78,7 @@ registered server events. Existing A1/A2/A3 checks must remain green.
 ## Implemented format and lifecycle
 
 Release 0.4.0 stores internal archive version 1 (`MNGC` magic), topology 12/8/6,
-RNG version 1, all configuration fields, objective, completed generation, best
+RNG version 1, fitness version 1, all configuration fields, objective, completed generation, best
 fitness/totals, next-population RNG state, 158 double genes per network, champion,
 ordered completed-generation records and a bounded sorted metadata map. A final
 SHA-256 digest covers the whole payload. Maximum file size is 2 MiB. This is an
@@ -113,3 +113,26 @@ evaluated actions. Checkpoint creation copies immutable references/history on th
 server thread; maximum population and generation bounds limit memory. Disk work
 runs off-thread and never reads Minecraft state. High-generation autosave cost
 and server tick performance still need a measured benchmark.
+
+
+## CSV comparison contract
+
+Export version 1 uses twenty columns, in this order:
+
+`generation,best_fitness,mean_fitness,worst_fitness,successful_candidates,population,success_rate,episode_tick_budget,generation_ticks,total_ticks,total_successes,seed,objective,mutation_probability,mutation_sigma,network_topology,fitness_version,fixture_id,export_version,configured_generations`
+
+`fixture_id` is SHA-256 over lexicographically sorted UTF-8 metadata key/value
+pairs, with zero-byte separators. Metadata rejects control characters, so these
+separators are unambiguous. It fingerprints the saved description, not terrain,
+world identity or dynamic state. Preserve the matching archive/world/run notes.
+`configured_generations` distinguishes an in-progress boundary from a completed
+configured run. A continued run exports its entire historical sequence under the
+new configured generation limit.
+
+The analysis tool validates all rows, cumulative tick/success counters, finite
+fitness/rates, configuration consistency and supported versions. It groups only
+matching objective/population/tick/mutation/topology/fitness/fixture settings and
+matching configured/completed generation counts. Duplicate seed/base-configuration
+pairs are rejected even when exported at different boundaries, preventing a run
+and continuation from being counted as independent seeds. Separate world datasets
+must still be analyzed separately. The tool emits CSV and never modifies inputs.

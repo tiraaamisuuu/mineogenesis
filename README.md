@@ -273,7 +273,8 @@ The `.mng` format is internal version 1, with no old-version migration yet.
 
 CSV contains generation best/mean/worst fitness, successful candidates, population,
 success rate, per-candidate tick budget, actual generation/cumulative ticks,
-cumulative successes, seed and objective. It contains only completed generations;
+cumulative successes, seed, objective, mutation settings, network/fitness versions,
+fixture fingerprint and configured generation budget. It contains only completed generations;
 replay and partial episodes do not change it. The opt-in vanilla boss bar updates
 at most twice per second, shows generation/candidate/best/collections, freezes
 progress while paused and fills on completion. Enable it again after respawning
@@ -286,6 +287,28 @@ fixture yourself if it changed. Checkpoints are **not world backups** and do not
 recover terrain after an abrupt crash. Genetic continuation is checked exactly
 in a deterministic core simulation; Minecraft world outcomes remain affected by
 time, other actors and physics. Reliable learned collection is still unproven.
+
+## Compare exported runs
+
+Python 3 can summarize CSV exports without additional packages. Keep one export
+per independent seed and use the same quiet fixture and configuration for each
+comparison; retain failures as well as successful runs. From the project directory:
+
+```sh
+python3 scripts/analyze-runs.py /path/to/seed11.csv /path/to/seed22.csv
+python3 scripts/analyze-runs.py --per-run /path/to/seed11.csv /path/to/seed22.csv
+```
+
+The default output is grouped summary CSV on standard output, so append
+`> summary.csv` to save it. It reports mean and sample standard deviation across
+seeds for best-so-far fitness change, first/final generation collection rates,
+overall collection rate and ticks. Single-seed standard deviations are blank.
+The tool validates counters and format, separates different fixtures/configurations
+and partial budgets, and rejects duplicate seed/configuration exports (including
+a run and its continuation). Partial exports are flagged; they are not completed
+run outcomes. No chart, significance or generalisation claim is inferred from
+these summaries. See the [pilot research protocol](docs/RESEARCH_PROTOCOL.md) for
+controls, provenance and limitations.
 
 ## Try manual control
 

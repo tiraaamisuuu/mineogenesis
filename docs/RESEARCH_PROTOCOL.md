@@ -36,7 +36,7 @@ in separate analysis invocations.
 4. Keep the area loaded and quiet. Export at completion and retain a matching
    named checkpoint. Record aborted runs and their reasons separately; never
    quietly omit them from reported outcomes.
-5. Summarize per-run best-fitness change, first/final generation collection rate,
+5. Summarize per-run best-so-far fitness change, first/final generation collection rate,
    aggregate collected episodes and actual simulation ticks. Summaries across
    seeds report means and sample standard deviations when at least two seeds
    exist. A one-seed result has no between-seed variance estimate.
@@ -44,8 +44,8 @@ in separate analysis invocations.
    evaluations. Generalisation claims require a later frozen-controller protocol
    on unseen fixtures with separate evaluation records and multiple trials.
 
-The first analysis utility will use Python's standard library, validate CSV
-invariants, emit per-run and grouped summary CSVs and preserve incompatible groups.
+`scripts/analyze-runs.py` uses Python's standard library, validates CSV
+invariants, emits per-run and grouped summary CSVs and preserves incompatible groups.
 No external analysis dependency or implicit claim of statistical significance is
 needed. This checkpoint does not automate Minecraft benchmark orchestration,
 control all world randomness, measure large populations or prove generalisation.
