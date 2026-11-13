@@ -92,7 +92,7 @@ public final class WorkflowTests {
             rejects(IOException.class, () -> CheckpointCodec.decode(damaged));
             rejects(IOException.class, () -> CheckpointCodec.decode(Arrays.copyOf(good, good.length - 1)));
             rejects(IOException.class, () -> CheckpointCodec.decode(new byte[CheckpointCodec.MAX_BYTES + 1]));
-            for (int offset : new int[]{4, 8, 20, 32, 36, 40}) {
+            for (int offset : new int[]{4, 8, 20, 24, 36, 40, 44}) {
                 byte[] malformed = good.clone(); ByteBuffer.wrap(malformed).putInt(offset, Integer.MAX_VALUE); rehash(malformed);
                 rejects(IOException.class, () -> CheckpointCodec.decode(malformed));
             }
@@ -124,10 +124,12 @@ public final class WorkflowTests {
             } finally { delete(root); }
         });
         test("CSV contains completed generations and consistent tick/success totals", () -> {
-            var a = archive(); String[] lines = CheckpointStore.csv(a.checkpoint()).lines().toArray(String[]::new);
+            var a = archive(); String[] lines = CheckpointStore.csv(a).lines().toArray(String[]::new);
             check(lines.length == 3 && lines[0].contains("success_rate"), "CSV header/rows");
             String[] last = lines[2].split(",");
-            check(last.length == 13 && last[0].equals("2") && last[9].equals("30") && last[12].equals("EXPLORATION"), "CSV counters/columns");
+            check(last.length == 20 && last[0].equals("2") && last[9].equals("30") && last[12].equals("EXPLORATION"), "CSV counters/columns");
+            check(last[15].equals("12-8-6") && last[16].equals("1") && last[17].equals(CheckpointStore.fixtureId(a)), "CSV provenance");
+            check(!CheckpointStore.fixtureId(a).equals(CheckpointStore.fixtureId(new RunArchive(a.checkpoint(), Map.of("world", "other:world")))), "Different fixture descriptions must have distinct IDs");
         });
         test("background writer coalesces autosaves and flushes explicit saves and exports", () -> {
             Path root = Files.createTempDirectory("mineogenesis-writer-");
@@ -138,7 +140,7 @@ public final class WorkflowTests {
                 rejects(IllegalArgumentException.class, () -> writer.submit("latest", a, false));
                 writer.close(); writer.close();
                 check(writer.idle() && store.names().equals(java.util.List.of("latest", "named")), "Flush must finish all accepted files");
-                check(Files.readString(root.resolve("metrics.csv")).equals(CheckpointStore.csv(a.checkpoint())), "Export contents");
+                check(Files.readString(root.resolve("metrics.csv")).equals(CheckpointStore.csv(a)), "Export contents");
                 rejects(IllegalStateException.class, () -> writer.autosave(a));
             } finally { delete(root); }
         });

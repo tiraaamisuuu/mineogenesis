@@ -2,6 +2,7 @@ package io.github.tiraaamisuuu.mineogenesis.core.evolution;
 
 /** Local shaping plus a dominant real-inventory reward; position is evaluator-only. */
 public final class EpisodeFitness {
+    public static final int VERSION = 1;
     private final EvolutionObjective objective;
     private final GroundExplorationFitness exploration;
     private boolean seen, collected;

@@ -45,7 +45,7 @@ public final class TrainingWriter implements AutoCloseable {
             }
             String result = "", error = "";
             try {
-                if (request.csv()) store.export(request.name(), request.archive().checkpoint());
+                if (request.csv()) store.export(request.name(), request.archive());
                 else store.save(request.name(), request.archive());
                 result = "Saved " + request.name() + (request.csv() ? ".csv" : ".mng") + " at generation " + request.archive().checkpoint().completedGeneration();
             } catch (IOException | RuntimeException failure) { error = "Write failed for " + request.name() + ": " + failure.getMessage(); }

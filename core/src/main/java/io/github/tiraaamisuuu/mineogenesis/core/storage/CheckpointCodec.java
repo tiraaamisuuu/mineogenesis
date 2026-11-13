@@ -18,7 +18,7 @@ public final class CheckpointCodec {
             var c = archive.checkpoint(); var config = c.config();
             out.writeInt(MAGIC); out.writeInt(VERSION);
             out.writeInt(NetworkGenome.INPUTS); out.writeInt(NetworkGenome.HIDDEN); out.writeInt(NetworkGenome.OUTPUTS);
-            out.writeInt(RNG_VERSION);
+            out.writeInt(RNG_VERSION); out.writeInt(EpisodeFitness.VERSION);
             out.writeLong(config.seed()); out.writeInt(config.populationSize()); out.writeInt(config.episodeTicks()); out.writeInt(config.generations());
             out.writeDouble(config.mutationProbability()); out.writeDouble(config.mutationSigma());
             out.writeUTF(c.objective().name()); out.writeInt(c.completedGeneration());
@@ -50,7 +50,9 @@ public final class CheckpointCodec {
         try (var in = new DataInputStream(new ByteArrayInputStream(body))) {
             if (in.readInt() != MAGIC || in.readInt() != VERSION) throw new IOException("Unsupported checkpoint format/version");
             if (in.readInt() != NetworkGenome.INPUTS || in.readInt() != NetworkGenome.HIDDEN || in.readInt() != NetworkGenome.OUTPUTS
-                    || in.readInt() != RNG_VERSION) throw new IOException("Incompatible network topology or genetic RNG");
+                    || in.readInt() != RNG_VERSION || in.readInt() != EpisodeFitness.VERSION) {
+                throw new IOException("Incompatible network topology, genetic RNG or fitness version");
+            }
             var config = new EvolutionConfig(in.readLong(), in.readInt(), in.readInt(), in.readInt(), in.readDouble(), in.readDouble());
             var objective = EvolutionObjective.valueOf(in.readUTF()); int completed = in.readInt();
             double best = in.readDouble(); long ticks = in.readLong(), successes = in.readLong();
