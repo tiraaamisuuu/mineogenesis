@@ -2,6 +2,7 @@ import contextlib
 import csv
 import importlib.util
 import io
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -45,6 +46,16 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(run.values["final_success_rate"], .25)
         self.assertEqual(run.values["overall_success_rate"], .125)
         self.assertEqual(run.values["total_ticks"], 750)
+        self.assertEqual(run.values["complete"], 1)
+
+    @unittest.skipUnless(os.environ.get("MINEOGENESIS_TEST_EXPORT"), "Java export fixture supplied in CI")
+    def test_java_export_contract(self):
+        run = analysis.read_run(Path(os.environ["MINEOGENESIS_TEST_EXPORT"]))
+        self.assertEqual(run.values["seed"], 42)
+        self.assertEqual(run.values["population"], 3)
+        self.assertEqual(run.values["completed_generations"], 2)
+        self.assertEqual(run.values["total_ticks"], 30)
+        self.assertEqual(run.values["total_successes"], 0)
         self.assertEqual(run.values["complete"], 1)
 
     def test_seed_groups_use_sample_sd_and_singletons_have_no_variance_estimate(self):

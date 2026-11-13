@@ -18,6 +18,8 @@ import io.github.tiraaamisuuu.mineogenesis.core.storage.*;
 public final class WorkflowTests {
     private static int passed;
     public static void main(String[] args) throws Exception {
+        // Cross-language contract fixture for the Python analysis suite.
+        if (args.length == 1) { Files.writeString(Path.of(args[0]), CheckpointStore.csv(archive())); return; }
         test("checkpoint RNG preserves the Java Random stream and cached Gaussian", () -> {
             for (long seed : new long[]{0, 42, -1, Long.MIN_VALUE, Long.MAX_VALUE}) {
                 var expected = new Random(seed);
